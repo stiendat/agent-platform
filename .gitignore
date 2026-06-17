@@ -72,3 +72,12 @@ docs/design/
 
 # App NDJSON logs (dev log persistence)
 logs/
+
+# Serena
+.serena/
+
+# OMO
+.omo/
+
+# Backup env
+.env.old
