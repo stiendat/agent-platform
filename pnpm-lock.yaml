@@ -282,6 +282,9 @@ importers:
       '@seta/module-sdk':
         specifier: workspace:^
         version: link:../../sdks/module
+      '@seta/performance':
+        specifier: workspace:^
+        version: link:../../packages/performance
       '@seta/planner':
         specifier: workspace:^
         version: link:../../packages/planner

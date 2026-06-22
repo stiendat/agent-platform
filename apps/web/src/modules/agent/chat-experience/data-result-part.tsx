@@ -1,4 +1,5 @@
-import { CardJsonBlock, type CardPayload } from './performance-card-part';
+import type { CardPayload } from '@seta/performance/contracts';
+import { AriaCard } from './cards';
 
 interface TaskSummary {
   taskId: string;
@@ -58,7 +59,7 @@ function PersonRow({ name, id, meta }: { name: string | null; id: string; meta?:
 
 export function DataResultPart({ data }: { data: ResultData }) {
   if (data.card) {
-    return <CardJsonBlock card={data.card} />;
+    return <AriaCard card={data.card} />;
   }
   if (data.tasks?.length) {
     return (
