@@ -3,11 +3,14 @@ import type {
   AccessDeniedCard as AccessDeniedCardData,
   AccountSummaryCard as AccountSummaryCardData,
   AtRiskListCard as AtRiskListCardData,
+  BottomPerformersCard as BottomPerformersCardData,
   CardPayload,
   CardRiskLevel,
   EmployeeProfileCard as EmployeeProfileCardData,
   HumanReviewFlagCard as HumanReviewFlagCardData,
   InlineTranscriptCard as InlineTranscriptCardData,
+  NormExplainerCard as NormExplainerCardData,
+  TopPerformersCard as TopPerformersCardData,
 } from '@seta/performance/contracts';
 import {
   Button,
@@ -30,8 +33,10 @@ import {
   FileSpreadsheet,
   FileText,
   Lock,
+  ShieldAlert,
   Sparkles,
   TrendingDown,
+  Trophy,
   UserCircle2,
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
@@ -666,6 +671,180 @@ export function AccessDeniedCard({ card }: { card: AccessDeniedCardData }) {
   );
 }
 
+// ─── Card 7/8 · top_performers / bottom_performers ──────────────────────────────
+
+/**
+ * Classification text ("Excellent", "At Risk", "Average") is a server label, not
+ * an enum the frontend owns — so tone is keyword-derived, defaulting to neutral
+ * for anything unrecognised rather than guessing a colour.
+ */
+function classificationTone(value: string): Tone {
+  const s = value.toLowerCase();
+  if (/(excellent|outstanding|top|strong|good)/.test(s)) return 'good';
+  // `high` reads as danger only for NORM rule severity; it never appears as a
+  // performer band ("Excellent/Good/Average/Needs Improvement/At Risk").
+  if (/(at[\s-]?risk|poor|critical|under ?perform|fail|high|severe)/.test(s)) return 'danger';
+  if (/(watch|average|fair|moderate|needs)/.test(s)) return 'warn';
+  return 'neutral';
+}
+
+function ClassificationChip({ value }: { value: string }) {
+  const tone = classificationTone(value);
+  const cls: Record<Tone, string> = {
+    good: 'bg-semantic-success-tint text-semantic-success',
+    neutral: 'bg-surface-3 text-ink-muted',
+    warn: 'bg-semantic-warning-tint text-semantic-warning',
+    danger: 'bg-destructive-tint text-destructive',
+  };
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full px-2 py-0.5 text-eyebrow font-medium',
+        cls[tone],
+      )}
+    >
+      {value}
+    </span>
+  );
+}
+
+export function PerformersCard({
+  card,
+}: {
+  card: TopPerformersCardData | BottomPerformersCardData;
+}) {
+  const isTop = card.type === 'top_performers';
+  const Icon = isTop ? Trophy : TrendingDown;
+  const accent = isTop ? 'text-semantic-success' : 'text-danger-ink';
+  const scoreTone: Tone = isTop ? 'good' : 'danger';
+  const scroll = card.employees.length > 6;
+
+  const exportRows: Cell[][] = card.employees.map((e) => [
+    e.rank,
+    e.memberId,
+    e.score,
+    e.classification,
+    e.reason,
+  ]);
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-hairline bg-surface-1">
+      <div className="flex items-center gap-2 border-b border-hairline bg-surface-2 px-4 py-3">
+        <Icon className={cn('size-4 shrink-0', accent)} />
+        <h3 className="min-w-0 flex-1 truncate text-body-sm font-semibold text-ink">
+          {card.title}
+        </h3>
+        <span className="shrink-0 text-caption text-ink-subtle">{card.employees.length}</span>
+        <ExportMenu
+          basename={slugify(card.title)}
+          headers={['Rank', 'Member ID', 'Score', 'Classification', 'Reason']}
+          rows={exportRows}
+        />
+      </div>
+      <ol className={cn('divide-y divide-hairline', scroll && 'max-h-[22rem] overflow-y-auto')}>
+        {card.employees.map((e) => (
+          <li key={e.memberId} className="flex items-start gap-3 px-4 py-3">
+            <span
+              className={cn(
+                'mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full font-mono text-caption font-semibold tabular-nums',
+                e.rank <= 3
+                  ? cn('text-on-primary', isTop ? 'bg-semantic-success' : 'bg-danger')
+                  : 'bg-surface-3 text-ink-muted',
+              )}
+            >
+              {e.rank}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-body-sm font-medium text-ink">{e.memberId}</span>
+                <ClassificationChip value={e.classification} />
+              </div>
+              <p className="mt-0.5 text-caption leading-relaxed text-ink-muted">{e.reason}</p>
+            </div>
+            <span className="shrink-0 text-right">
+              <span
+                className={cn(
+                  'block text-section-title font-semibold tabular-nums leading-none',
+                  TONE_TEXT[scoreTone],
+                )}
+              >
+                {e.score.toFixed(2)}
+              </span>
+              <span className="mt-1 block text-eyebrow uppercase tracking-wide text-ink-subtle">
+                score
+              </span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+// ─── Card 9 · norm_explainer (deterministic "why this risk") ─────────────────────
+
+export function NormExplainerCard({ card }: { card: NormExplainerCardData }) {
+  const exportRows: Cell[][] = card.rules.map((r) => [
+    r.ruleId,
+    r.category,
+    r.classification,
+    r.detail,
+  ]);
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-hairline bg-surface-1">
+      <div className="flex items-center gap-2 border-b border-hairline bg-surface-2 px-4 py-3">
+        <ShieldAlert className={cn('size-4 shrink-0', TONE_TEXT[riskToTone(card.compositeRisk)])} />
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-body-sm font-semibold text-ink">
+            <span className="font-mono">{card.employee.name}</span>
+            <span className="font-normal text-ink-subtle"> · why this risk</span>
+          </h3>
+          <p className="text-eyebrow uppercase tracking-wide text-ink-subtle">
+            {card.reviewPeriod}
+          </p>
+        </div>
+        <RiskPillSpan level={card.compositeRisk} />
+        <ExportMenu
+          basename={slugify(`${card.employee.name}-norm-rules`)}
+          headers={['Rule', 'Category', 'Classification', 'Detail']}
+          rows={exportRows}
+        />
+      </div>
+
+      <div className="px-4 py-2.5 text-caption text-ink-subtle">
+        <span className="font-medium text-ink-muted tabular-nums">{card.triggeredCount}</span> of{' '}
+        {card.evaluatedCount} rules triggered
+      </div>
+
+      <ul className="divide-y divide-hairline border-t border-hairline">
+        {card.rules.map((r) => (
+          <li key={r.ruleId} className="flex items-start gap-3 px-4 py-2.5">
+            <span className="mt-px shrink-0 rounded-md bg-surface-3 px-1.5 py-0.5 font-mono text-eyebrow font-medium text-ink-muted">
+              {r.ruleId}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <span className="text-body-sm font-medium text-ink">{r.detail}</span>
+                <span className="text-eyebrow uppercase tracking-wide text-ink-subtle">
+                  {r.category}
+                </span>
+              </div>
+              <ClassificationChip value={r.classification} />
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {card.summary && (
+        <p className="border-t border-hairline px-4 py-3 text-body-sm leading-relaxed text-ink-muted">
+          {card.summary}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── Dispatcher ───────────────────────────────────────────────────────────────
 
 function CardBody({ card }: { card: CardPayload }) {
@@ -684,6 +863,11 @@ function CardBody({ card }: { card: CardPayload }) {
       return <AccessDeniedCard card={card} />;
     case 'report':
       return <ReportCard card={card} />;
+    case 'top_performers':
+    case 'bottom_performers':
+      return <PerformersCard card={card} />;
+    case 'norm_explainer':
+      return <NormExplainerCard card={card} />;
     default:
       return null;
   }

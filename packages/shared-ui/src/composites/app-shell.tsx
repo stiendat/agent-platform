@@ -96,7 +96,9 @@ export function AppShell({
   return (
     <div
       className={cn(
-        'flex h-screen w-screen flex-col overflow-hidden bg-canvas text-ink',
+        // Subtract any top inset (e.g. the dev impersonation banner) so the shell
+        // never overflows the viewport. --app-inset-top defaults to 0 in production.
+        'flex h-[calc(100dvh-var(--app-inset-top,0px))] w-full flex-col overflow-hidden bg-canvas text-ink',
         className,
       )}
     >

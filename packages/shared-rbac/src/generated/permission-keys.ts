@@ -54,6 +54,11 @@ export type PermissionKey =
   | 'notifications.preference.read'
   | 'notifications.preference.write'
   | 'performance.aggregate.read'
+  | 'performance.dashboard.custom.create'
+  | 'performance.dashboard.custom.delete'
+  | 'performance.dashboard.custom.read'
+  | 'performance.dashboard.custom.update'
+  | 'performance.dashboard.custom.widgets.write'
   | 'performance.dashboard.executive.read'
   | 'performance.dashboard.read'
   | 'performance.dashboard.team.read'
@@ -164,6 +169,11 @@ export const ALL_PERMISSIONS: readonly PermissionKey[] = [
   'notifications.preference.read',
   'notifications.preference.write',
   'performance.aggregate.read',
+  'performance.dashboard.custom.create',
+  'performance.dashboard.custom.delete',
+  'performance.dashboard.custom.read',
+  'performance.dashboard.custom.update',
+  'performance.dashboard.custom.widgets.write',
   'performance.dashboard.executive.read',
   'performance.dashboard.read',
   'performance.dashboard.team.read',

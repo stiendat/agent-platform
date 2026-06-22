@@ -22,7 +22,8 @@ import {
   YAxis,
 } from 'recharts';
 import { ForbiddenError, fetchMeDashboard, fetchPeriods } from '@/modules/aria/api/client.ts';
-import { formatPeriod, PeriodFilter } from '@/modules/aria/PeriodFilter.tsx';
+import { PeriodFilter } from '@/modules/aria/PeriodFilter.tsx';
+import { formatPeriod } from '@/modules/aria/period.ts';
 
 export const Route = createFileRoute('/_authed/aria/overview')({
   component: OverviewPage,

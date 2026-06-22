@@ -15,6 +15,7 @@ import { type Statement, toManifest } from '@seta/shared-rbac';
  */
 export const performanceStatement = {
   'performance.dashboard': ['read', 'team.read', 'executive.read'],
+  'performance.dashboard.custom': ['read', 'create', 'update', 'delete', 'widgets.write'],
   'performance.employee': ['read'],
   'performance.violation': ['read'],
   'performance.norm': ['read'],
@@ -31,8 +32,11 @@ const roleStatements = {
   },
   // Manager — team dashboards + ARIA at Leader depth (full profile + reports,
   // but no promotion readiness or salary band). Maps to the 'leader' audience.
+  // Custom dashboards: managers can create, read, edit, and delete their own and
+  // shared custom dashboards, including widget management.
   'performance.manager': {
     'performance.dashboard': ['read', 'team.read'],
+    'performance.dashboard.custom': ['read', 'create', 'update', 'delete', 'widgets.write'],
     'performance.employee': ['read'],
     'performance.violation': ['read'],
     'performance.norm': ['read'],
@@ -41,8 +45,11 @@ const roleStatements = {
   },
   // BOD — all dashboards + aggregate/workforce ARIA views. Individual reads are
   // allowed only on explicit drill-down (enforced in the card builders).
+  // Custom dashboards: BOD can view and manage custom dashboards but NOT create
+  // or delete them (managers own creation).
   'performance.bod': {
     'performance.dashboard': ['read', 'team.read', 'executive.read'],
+    'performance.dashboard.custom': ['read', 'create', 'update', 'delete', 'widgets.write'],
     'performance.employee': ['read'],
     'performance.violation': ['read'],
     'performance.norm': ['read'],

@@ -1,19 +1,11 @@
-import {
-  date,
-  doublePrecision,
-  index,
-  integer,
-  pgSchema,
-  primaryKey,
-  text,
-  uuid,
-} from 'drizzle-orm/pg-core';
+import { date, doublePrecision, index, integer, primaryKey, text, uuid } from 'drizzle-orm/pg-core';
+
+import { performanceSchema } from './_pg-schema.ts';
 
 // ARIA — Employee Performance Tracking & Reporting Agent.
 // Mock-data tables mirror the 12 sheets of ELC_05_Employee_Performance_Tracking.xlsx.
 // Every table is tenant-scoped (uuid tenant_id, no cross-schema FK per architecture §6);
 // employee identifiers (member_id e.g. "EMP-031") are tenant-local text, not FKs to identity.
-export const performanceSchema = pgSchema('performance');
 
 // DS-00 · Employee Master — one row per employee; central reference for every dataset.
 export const employeeMaster = performanceSchema.table(
@@ -231,3 +223,7 @@ export const projectMaster = performanceSchema.table(
   },
   (t) => [primaryKey({ columns: [t.tenant_id, t.project_id] })],
 );
+
+export { performanceSchema } from './_pg-schema.ts';
+// Custom dashboards — user-created widget canvases backed by ARIA agent output.
+export * from './schema.custom-dashboards.ts';
