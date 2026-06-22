@@ -65,7 +65,7 @@ tenant's rows in all 12 tables, then inserts fresh data.
 
 - **Reference data — verbatim.** `norm_rules` (27), `violation_type_ref` (26), and
   `project_master` (15) are transcribed exactly from the ELC file
-  ([`scripts/reference-data.ts`](scripts/reference-data.ts)); ARIA's rule engine depends on
+  ([`src/backend/seed-reference-data.ts`](src/backend/seed-reference-data.ts)); ARIA's rule engine depends on
   these being correct.
 - **Employee data — generated.** `employee_master`, `resource_allocation`,
   `performance_by_project`, `timesheet`, and `violations` are produced by a **deterministic**

@@ -1,6 +1,7 @@
 import { computeAccessibleGroups, hashRoleSummary, rollup, type SessionScope } from '@seta/core';
 import { coreDb } from '@seta/core/db';
 import { createUser, grantRole, listRoleGrants, updateUserProfile } from '@seta/identity';
+import { seedPerformanceData } from '@seta/performance';
 import {
   addGroupMember,
   applyLabelsByName,
@@ -59,8 +60,8 @@ async function resolveTenantIdOrNull(input: string): Promise<string | null> {
   }
 }
 
-type Module = 'users' | 'planner' | 'availability';
-const ALL_MODULES: Module[] = ['users', 'planner', 'availability'];
+type Module = 'users' | 'planner' | 'availability' | 'performance';
+const ALL_MODULES: Module[] = ['users', 'planner', 'availability', 'performance'];
 
 function parseModules(only: string | undefined): Set<Module> {
   if (!only) return new Set(ALL_MODULES);
@@ -565,6 +566,14 @@ export async function seedCommand(opts: SeedOpts): Promise<void> {
         skipped: availabilitySkipped,
       })}\n`,
     );
+  }
+
+  // Phase — ARIA performance dataset (12 `performance.*` tables of synthetic
+  // employees + NORM rules). Independent of the CSV data; keyed only on tenant.
+  if (modules.has('performance')) {
+    log.info('phase: seeding ARIA performance data');
+    const counts = await seedPerformanceData({ tenantId });
+    process.stdout.write(`${JSON.stringify({ phase: 'performance', ...counts })}\n`);
   }
 
   log.info({ tenant_id: tenantId, modules: [...modules] }, 'seed: complete');

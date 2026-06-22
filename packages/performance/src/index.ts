@@ -1,5 +1,4 @@
 export { assembleProfile } from './backend/domain/assemble.ts';
-
 export {
   type DataAccessPorts,
   getDataAccess,
@@ -18,6 +17,11 @@ export type {
   TimesheetData,
   ViolationSummary,
 } from './backend/domain/schemas.ts';
+export {
+  type SeedPerformanceCounts,
+  type SeedPerformanceOpts,
+  seedPerformanceData,
+} from './backend/seed.ts';
 export {
   type Audience,
   audienceFromRoles,
