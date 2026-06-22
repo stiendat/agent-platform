@@ -27,6 +27,10 @@ export interface SeedPerformanceOpts {
   count?: number;
   /** PRNG seed — same seed yields identical data. Default 42. */
   seed?: number;
+  /** Number of consecutive monthly review periods to generate. Default 2. */
+  months?: number;
+  /** Most-recent period (YYYY-MM) the history ends at. Default '2026-04'. */
+  endPeriod?: string;
 }
 
 export interface SeedPerformanceCounts {
@@ -116,7 +120,6 @@ const ACTION_BY_STATUS: Record<string, string> = {
   Escalated: 'Escalated to HR Director',
   'Closed – No Action': 'Pending',
 };
-const PERIODS = ['2026-03', '2026-04'];
 const FEEDBACK_POS = [
   'Consistent delivery and accountability',
   'Consistent performance maintained',
@@ -153,6 +156,25 @@ function isoDate(rng: () => number, startYear: number, endYear: number): string 
   return `${year}-${pad(month, 2)}-${pad(day, 2)}`;
 }
 
+/** `months` consecutive YYYY-MM periods ending at (and including) `endPeriod`, ascending. */
+function buildPeriods(endPeriod: string, months: number): string[] {
+  const m = /^(\d{4})-(\d{2})$/.exec(endPeriod);
+  if (!m) throw new Error(`endPeriod must be YYYY-MM, got: ${endPeriod}`);
+  if (months < 1) throw new Error(`months must be >= 1, got: ${months}`);
+  let year = Number(m[1]);
+  let month = Number(m[2]); // 1–12
+  const out: string[] = [];
+  for (let i = 0; i < months; i++) {
+    out.push(`${year}-${pad(month, 2)}`);
+    month -= 1;
+    if (month === 0) {
+      month = 12;
+      year -= 1;
+    }
+  }
+  return out.reverse();
+}
+
 function pickLevel(rng: () => number): number {
   const roll = rng();
   if (roll < 0.18) return 1;
@@ -181,7 +203,7 @@ interface GeneratedRows {
   profiles: Row[];
 }
 
-function generate(tenantId: string, count: number, seed: number): GeneratedRows {
+function generate(tenantId: string, count: number, seed: number, periods: string[]): GeneratedRows {
   const employees: Row[] = [];
   const allocations: Row[] = [];
   const perf: Row[] = [];
@@ -210,9 +232,16 @@ function generate(tenantId: string, count: number, seed: number): GeneratedRows 
       base = 2.5 + rng() * 0.5; // meets-low
     else base = 3.0 + rng() * 1.4; // good / meets
 
-    const t3 = r2(Math.min(5, Math.max(1, base + (rng() - 0.5) * 0.3)));
-    const t4 = r2(Math.min(5, Math.max(1, t3 + (rng() - 0.55) * 0.4))); // slight downward bias
-    const avg = r2((t3 + t4) / 2);
+    // Monthly score walk: start near `base`, then drift month-to-month with a
+    // slight downward bias so trends (and decline signals) read realistically.
+    const scoresByPeriod: number[] = [r2(Math.min(5, Math.max(1, base + (rng() - 0.5) * 0.3)))];
+    for (let k = 1; k < periods.length; k++) {
+      const prev = scoresByPeriod[k - 1]!;
+      scoresByPeriod.push(r2(Math.min(5, Math.max(1, prev + (rng() - 0.55) * 0.4))));
+    }
+    const t4 = scoresByPeriod[scoresByPeriod.length - 1]!; // latest review period
+    const t3 = scoresByPeriod[scoresByPeriod.length - 2] ?? t4; // predecessor (= latest if 1 period)
+    const avg = r2((t3 + t4) / 2); // headline = mean of the two most-recent periods
 
     // Allocation archetype.
     const allocRoll = rng();
@@ -280,10 +309,9 @@ function generate(tenantId: string, count: number, seed: number): GeneratedRows 
     });
 
     const reviewer = fam.mgr.startsWith('EM') ? fam.mgr : `TL-${fam.projRole}-001`;
-    const scoresByPeriod = [t3, t4];
     let tsComplianceT4 = 'Compliant';
     let totalOtT4 = 0;
-    for (let p = 0; p < PERIODS.length; p++) {
+    for (let p = 0; p < periods.length; p++) {
       const score = scoresByPeriod[p]!;
       const fb =
         score >= 3.5
@@ -294,7 +322,7 @@ function generate(tenantId: string, count: number, seed: number): GeneratedRows 
       perf.push({
         tenant_id: tenantId,
         member_id,
-        report_period: PERIODS[p],
+        report_period: periods[p],
         reviewer_id: reviewer,
         total_point: score,
         classification: classify(score),
@@ -322,7 +350,7 @@ function generate(tenantId: string, count: number, seed: number): GeneratedRows 
       sheets.push({
         tenant_id: tenantId,
         member_id,
-        report_period: PERIODS[p],
+        report_period: periods[p],
         work_days_in_month: 22,
         days_probation: 0,
         days_official,
@@ -338,7 +366,7 @@ function generate(tenantId: string, count: number, seed: number): GeneratedRows 
         night_shift_hours: night,
       });
 
-      if (p === PERIODS.length - 1) {
+      if (p === periods.length - 1) {
         totalOtT4 = total_ot;
         tsComplianceT4 =
           days_absent_unapproved >= 1
@@ -482,9 +510,12 @@ export async function seedPerformanceData(
   const tenantId = opts.tenantId;
   const count = opts.count ?? 100;
   const seed = opts.seed ?? 42;
+  const months = opts.months ?? 2;
+  const endPeriod = opts.endPeriod ?? '2026-04';
+  const periods = buildPeriods(endPeriod, months);
 
   const { employees, allocations, perf, sheets, viols, summaries, promos, salaries, profiles } =
-    generate(tenantId, count, seed);
+    generate(tenantId, count, seed, periods);
 
   const refNorms = NORM_RULES.map((n) => ({
     tenant_id: tenantId,

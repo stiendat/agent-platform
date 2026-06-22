@@ -50,6 +50,11 @@ export interface SeedOpts {
   adminName?: string;
   password?: string;
   only?: string;
+  /** ARIA performance dataset knobs (the `performance` phase). */
+  perfCount?: number;
+  perfMonths?: number;
+  perfSeed?: number;
+  perfEndPeriod?: string;
 }
 
 async function resolveTenantIdOrNull(input: string): Promise<string | null> {
@@ -571,8 +576,17 @@ export async function seedCommand(opts: SeedOpts): Promise<void> {
   // Phase — ARIA performance dataset (12 `performance.*` tables of synthetic
   // employees + NORM rules). Independent of the CSV data; keyed only on tenant.
   if (modules.has('performance')) {
-    log.info('phase: seeding ARIA performance data');
-    const counts = await seedPerformanceData({ tenantId });
+    log.info(
+      { count: opts.perfCount, months: opts.perfMonths, endPeriod: opts.perfEndPeriod },
+      'phase: seeding ARIA performance data',
+    );
+    const counts = await seedPerformanceData({
+      tenantId,
+      count: opts.perfCount,
+      months: opts.perfMonths,
+      seed: opts.perfSeed,
+      endPeriod: opts.perfEndPeriod,
+    });
     process.stdout.write(`${JSON.stringify({ phase: 'performance', ...counts })}\n`);
   }
 

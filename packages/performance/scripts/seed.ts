@@ -1,7 +1,8 @@
 /**
  * ARIA performance-data seeder (standalone dev CLI).
  *
- *   pnpm --filter @seta/performance db:seed [-- --tenant=<slug|uuid>] [--count=<N>] [--seed=<n>]
+ *   pnpm --filter @seta/performance db:seed \
+ *     [-- --tenant=<slug|uuid>] [--count=<N>] [--seed=<n>] [--months=<N>] [--end-period=<YYYY-MM>]
  *
  * Thin wrapper around `seedPerformanceData` (packages/performance/src/backend/seed.ts);
  * the deployed platform CLI `seed` command calls the same function so the two paths
@@ -24,6 +25,8 @@ function arg(name: string): string | undefined {
 const TENANT_INPUT = arg('tenant');
 const COUNT = Number(arg('count') ?? 100);
 const SEED = Number(arg('seed') ?? 42);
+const MONTHS = Number(arg('months') ?? 2);
+const END_PERIOD = arg('end-period') ?? '2026-04';
 
 async function resolveTenant(): Promise<{ id: string; label: string }> {
   const pool = getPool('web');
@@ -53,10 +56,23 @@ async function main(): Promise<void> {
   try {
     const tenant = await resolveTenant();
     log.info(
-      { tenant: tenant.label, tenantId: tenant.id, count: COUNT, seed: SEED },
+      {
+        tenant: tenant.label,
+        tenantId: tenant.id,
+        count: COUNT,
+        seed: SEED,
+        months: MONTHS,
+        endPeriod: END_PERIOD,
+      },
       'seeding performance data',
     );
-    const counts = await seedPerformanceData({ tenantId: tenant.id, count: COUNT, seed: SEED });
+    const counts = await seedPerformanceData({
+      tenantId: tenant.id,
+      count: COUNT,
+      seed: SEED,
+      months: MONTHS,
+      endPeriod: END_PERIOD,
+    });
     log.info(counts, 'seed complete');
   } finally {
     await closePools();

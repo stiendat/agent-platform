@@ -257,6 +257,14 @@ program
     '--only <modules>',
     'Comma-separated subset of phases to run: users,planner,availability,performance (default: all)',
   )
+  .option('--perf-count <n>', 'ARIA: number of synthetic employees', (v) => Number(v), 200)
+  .option('--perf-months <n>', 'ARIA: months of review history to generate', (v) => Number(v), 6)
+  .option(
+    '--perf-end-period <yyyy-mm>',
+    'ARIA: most-recent review period the history ends at',
+    '2026-04',
+  )
+  .option('--perf-seed <n>', 'ARIA: PRNG seed (same seed → identical data)', (v) => Number(v), 42)
   .action(
     async (opts: {
       tenant: string;
@@ -266,6 +274,10 @@ program
       adminName?: string;
       password?: string;
       only?: string;
+      perfCount: number;
+      perfMonths: number;
+      perfEndPeriod: string;
+      perfSeed: number;
     }) => {
       try {
         // pnpm exec changes CWD to the package dir; INIT_CWD is the original invocation dir.
@@ -278,6 +290,10 @@ program
           adminName: opts.adminName,
           password: opts.password,
           only: opts.only,
+          perfCount: opts.perfCount,
+          perfMonths: opts.perfMonths,
+          perfEndPeriod: opts.perfEndPeriod,
+          perfSeed: opts.perfSeed,
         });
       } finally {
         await closePools();
