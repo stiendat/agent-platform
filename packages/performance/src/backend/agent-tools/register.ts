@@ -93,6 +93,14 @@ When to use which card:
 - at_risk_list — the user asks "who is at risk" for a team / account (a roster).
 - account_summary — an account- or workforce-level risk roll-up (aggregate, no
   individual focus). Prefer this for BOD-style "overall risk" questions.
+- top_performers — the user asks for the best / highest-rated K employees (a ranking).
+  Pass limit=K (default 5) and account_id when scoped to one account.
+- bottom_performers — the user asks for the lowest / weakest K employees by score.
+  Pass limit=K (default 5). This ranks by score; it is NOT the same as at_risk_list
+  (which surfaces risk signals, not a pure score ranking).
+- norm_explainer — the user asks WHY an employee has their risk level / verdict, or
+  wants the reasoning. Needs member_id. Shows the deterministic NORM rules that fired
+  (rule id, classification, threshold detail) — the engine's own explanation.
 - human_review_flag — you are about to state a SENSITIVE conclusion (PIP,
   attrition verdict, performance verdict). Pass the conclusion to the tool so it
   is held for human approval rather than asserted directly.

@@ -9,6 +9,8 @@ import {
   buildEmployeeProfileCard,
   buildHumanReviewFlagCard,
   buildInlineTranscriptCard,
+  buildNormExplainerCard,
+  buildPerformersCard,
 } from '../cards/build.ts';
 import { CARD_TYPES, CardPayloadSchema } from '../cards/schema.ts';
 import { assembleProfile } from '../domain/assemble.ts';
@@ -65,6 +67,13 @@ export const renderCardTool = defineAgentTool({
       .min(1)
       .optional()
       .describe('Required for human_review_flag: the sensitive conclusion to hold for approval.'),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(50)
+      .default(5)
+      .describe('For top_performers / bottom_performers: how many employees to list (K).'),
   }),
   output: z.object({ card: CardPayloadSchema }),
   rbac: 'performance.norm.read',
@@ -88,7 +97,8 @@ export const renderCardTool = defineAgentTool({
 
     switch (input.card_type) {
       case 'employee_profile_report':
-      case 'inline_transcript': {
+      case 'inline_transcript':
+      case 'norm_explainer': {
         if (!input.member_id) {
           throw new Error(`${input.card_type} requires member_id`);
         }
@@ -97,7 +107,9 @@ export const renderCardTool = defineAgentTool({
         const card =
           input.card_type === 'employee_profile_report'
             ? buildEmployeeProfileCard(profile, norm)
-            : buildInlineTranscriptCard(profile, norm);
+            : input.card_type === 'inline_transcript'
+              ? buildInlineTranscriptCard(profile, norm)
+              : buildNormExplainerCard(profile, norm);
         return { card: CardPayloadSchema.parse(card) };
       }
 
@@ -120,6 +132,24 @@ export const renderCardTool = defineAgentTool({
           period: input.period,
         });
         return { card: CardPayloadSchema.parse(buildAccountSummaryCard(summary)) };
+      }
+
+      case 'top_performers':
+      case 'bottom_performers': {
+        const direction = input.card_type === 'top_performers' ? 'top' : 'bottom';
+        const rows = await da.listPerformers(tenantId, {
+          direction,
+          limit: input.limit,
+          accountId: input.account_id,
+          period: input.period,
+        });
+        const card = buildPerformersCard(
+          direction,
+          rows,
+          { accountLabel: accountLabel(input.account_id ?? null), period: input.period ?? null },
+          audience,
+        );
+        return { card: CardPayloadSchema.parse(card) };
       }
 
       case 'human_review_flag': {

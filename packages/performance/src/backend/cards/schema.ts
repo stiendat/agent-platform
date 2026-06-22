@@ -130,6 +130,59 @@ export const HumanReviewFlagCardSchema = z.object({
 });
 export type HumanReviewFlagCard = z.infer<typeof HumanReviewFlagCardSchema>;
 
+// --- 7/8. Performer ranking (top-K / bottom-K) ----------------------------
+/** One ranked employee in a top/bottom-performers list. */
+export const PerformerEntrySchema = z.object({
+  rank: z.number(), // 1-based position within this list
+  memberId: z.string(),
+  name: z.string(),
+  score: z.number(),
+  classification: z.string(),
+  /** Short reason this employee is on the list, e.g. "Excellent — avg score 4.8". */
+  reason: z.string(),
+});
+export type PerformerEntry = z.infer<typeof PerformerEntrySchema>;
+
+export const TopPerformersCardSchema = z.object({
+  type: z.literal('top_performers'),
+  /** e.g. "Top 5 performers — All accounts". */
+  title: z.string(),
+  employees: z.array(PerformerEntrySchema),
+});
+export type TopPerformersCard = z.infer<typeof TopPerformersCardSchema>;
+
+export const BottomPerformersCardSchema = z.object({
+  type: z.literal('bottom_performers'),
+  /** e.g. "Lowest 5 performers — Account B". */
+  title: z.string(),
+  employees: z.array(PerformerEntrySchema),
+});
+export type BottomPerformersCard = z.infer<typeof BottomPerformersCardSchema>;
+
+// --- 9. NORM explainer (why this risk?) -----------------------------------
+/** One triggered NORM rule, shown as the deterministic "why" behind a verdict. */
+export const NormRuleExplanationSchema = z.object({
+  ruleId: z.string(), // e.g. "NORM-K05"
+  category: z.string(), // kpi / timesheet / allocation / violation / attendance
+  classification: z.string(), // e.g. "At Risk"
+  detail: z.string(), // human-readable threshold detail, e.g. "KPI 2.2 < 2.5"
+});
+export type NormRuleExplanation = z.infer<typeof NormRuleExplanationSchema>;
+
+export const NormExplainerCardSchema = z.object({
+  type: z.literal('norm_explainer'),
+  employee: z.object({ memberId: z.string(), name: z.string() }),
+  reviewPeriod: z.string(),
+  compositeRisk: CardRiskLevelSchema,
+  /** How many of the evaluated rules triggered, and how many were evaluated. */
+  triggeredCount: z.number(),
+  evaluatedCount: z.number(),
+  /** The rules that fired — the deterministic explanation for the risk level. */
+  rules: z.array(NormRuleExplanationSchema),
+  summary: z.string(),
+});
+export type NormExplainerCard = z.infer<typeof NormExplainerCardSchema>;
+
 /**
  * The full card union the frontend ingests. Discriminated on `type` so both the
  * Zod parser and the frontend renderer can switch exhaustively.
@@ -141,6 +194,9 @@ export const CardPayloadSchema = z.discriminatedUnion('type', [
   AccountSummaryCardSchema,
   AccessDeniedCardSchema,
   HumanReviewFlagCardSchema,
+  TopPerformersCardSchema,
+  BottomPerformersCardSchema,
+  NormExplainerCardSchema,
 ]);
 export type CardPayload = z.infer<typeof CardPayloadSchema>;
 
@@ -152,5 +208,8 @@ export const CARD_TYPES = [
   'account_summary',
   'access_denied',
   'human_review_flag',
+  'top_performers',
+  'bottom_performers',
+  'norm_explainer',
 ] as const;
 export type CardType = (typeof CARD_TYPES)[number];

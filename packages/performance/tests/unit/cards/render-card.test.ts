@@ -106,6 +106,51 @@ describe('performance_renderCard tool', () => {
     }
   });
 
+  it('renders a top-performers ranking (highest score first)', async () => {
+    const card = await render('hr', { card_type: 'top_performers', limit: 3 });
+    expect(card.type).toBe('top_performers');
+    if (card.type === 'top_performers') {
+      expect(card.employees).toHaveLength(3);
+      expect(card.employees[0]?.rank).toBe(1);
+      for (let i = 1; i < card.employees.length; i++) {
+        expect(card.employees[i - 1]!.score).toBeGreaterThanOrEqual(card.employees[i]!.score);
+      }
+    }
+  });
+
+  it('renders a bottom-performers ranking (lowest score first)', async () => {
+    const card = await render('leader', { card_type: 'bottom_performers', limit: 2 });
+    expect(card.type).toBe('bottom_performers');
+    if (card.type === 'bottom_performers') {
+      expect(card.employees).toHaveLength(2);
+      expect(card.employees[0]!.score).toBeLessThanOrEqual(card.employees[1]!.score);
+    }
+  });
+
+  it('redacts performer names for the BOD audience', async () => {
+    const card = await render('bod', { card_type: 'top_performers', limit: 2 });
+    if (card.type === 'top_performers') {
+      for (const e of card.employees) expect(e.name).toBe(e.memberId);
+    }
+  });
+
+  it('renders a norm_explainer with the triggered rules for an employee', async () => {
+    const card = await render('hr', { card_type: 'norm_explainer', member_id: 'EMP-031' });
+    expect(card.type).toBe('norm_explainer');
+    if (card.type === 'norm_explainer') {
+      expect(card.employee.memberId).toBe('EMP-031');
+      expect(card.rules.length).toBe(card.triggeredCount);
+      expect(card.rules.every((r) => r.ruleId && r.detail)).toBe(true);
+    }
+  });
+
+  it('includes a per-employee reason on performer entries', async () => {
+    const card = await render('hr', { card_type: 'bottom_performers', limit: 2 });
+    if (card.type === 'bottom_performers') {
+      expect(card.employees.every((e) => e.reason.length > 0)).toBe(true);
+    }
+  });
+
   it('rejects when a profile card is requested without member_id', async () => {
     // The tool guards against a missing id; the wrap layer sanitises the thrown
     // message, so we assert on the rejection rather than its text.
