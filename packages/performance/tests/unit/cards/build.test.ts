@@ -7,6 +7,8 @@ import {
   buildEmployeeProfileCard,
   buildHumanReviewFlagCard,
   buildInlineTranscriptCard,
+  buildNormExplainerCard,
+  buildPerformersCard,
   formatPeriod,
   riskSignals,
   toCardRisk,
@@ -170,6 +172,63 @@ describe('buildAccountSummaryCard', () => {
     expect(card.counts).toEqual({ high: 8, medium: 22, low: 94 });
     expect(card.totalEmployees).toBe(124);
     expect(card.highPct).toBe(6);
+  });
+});
+
+describe('buildPerformersCard', () => {
+  const rows = [
+    {
+      memberId: 'EMP-013',
+      name: 'EMP-013',
+      score: 4.8,
+      classification: 'Excellent',
+      note: 'Top Performer',
+    },
+    {
+      memberId: 'EMP-007',
+      name: 'EMP-007',
+      score: 4.5,
+      classification: 'Excellent',
+      note: 'No flags',
+    },
+  ];
+
+  it('builds a ranked top-performers card with 1-based ranks and a per-employee reason', () => {
+    const card = buildPerformersCard(
+      'top',
+      rows,
+      { accountLabel: null, period: '2026-04' },
+      'leader',
+    );
+    expect(() => CardPayloadSchema.parse(card)).not.toThrow();
+    expect(card.type).toBe('top_performers');
+    expect(card.title).toBe('Top 2 performers — All accounts, April 2026');
+    expect(card.employees[0]).toMatchObject({ rank: 1, memberId: 'EMP-013', score: 4.8 });
+    // reason carries the note when it adds signal, and omits the bare "No flags".
+    expect(card.employees[0]?.reason).toBe('Excellent, avg score 4.8 — Top Performer');
+    expect(card.employees[1]?.reason).toBe('Excellent, avg score 4.5');
+  });
+
+  it('labels a bottom-performers card and tags the type', () => {
+    const card = buildPerformersCard('bottom', rows, { accountLabel: 'Account B' }, 'leader');
+    expect(() => CardPayloadSchema.parse(card)).not.toThrow();
+    expect(card.type).toBe('bottom_performers');
+    expect(card.title).toContain('Lowest 2 performers — Account B');
+  });
+});
+
+describe('buildNormExplainerCard', () => {
+  it('lists the triggered NORM rules as the deterministic explanation', () => {
+    const profile = highRiskSnapshot();
+    const card = buildNormExplainerCard(profile, evaluateNormRules(profile));
+    expect(() => CardPayloadSchema.parse(card)).not.toThrow();
+    expect(card.type).toBe('norm_explainer');
+    expect(card.employee.memberId).toBe('EMP-031');
+    expect(card.compositeRisk).toBe('high');
+    expect(card.triggeredCount).toBeGreaterThan(0);
+    expect(card.triggeredCount).toBe(card.rules.length);
+    expect(card.rules.some((r) => r.ruleId === 'NORM-K05')).toBe(true);
+    expect(card.summary).toContain('composite risk: high');
   });
 });
 

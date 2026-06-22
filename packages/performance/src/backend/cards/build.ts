@@ -4,6 +4,7 @@ import type {
   AtRiskEntry,
   NormResult,
   NormRuleResult,
+  PerformerRow,
   ProfileSnapshot,
   RiskLevel,
 } from '../domain/schemas.ts';
@@ -11,11 +12,14 @@ import type {
   AccessDeniedCard,
   AccountSummaryCard,
   AtRiskListCard,
+  BottomPerformersCard,
   CardMetric,
   CardRiskLevel,
   EmployeeProfileCard,
   HumanReviewFlagCard,
   InlineTranscriptCard,
+  NormExplainerCard,
+  TopPerformersCard,
 } from './schema.ts';
 
 /**
@@ -231,6 +235,67 @@ export function buildAccountSummaryCard(summary: AccountRiskSummary): AccountSum
     totalEmployees: total,
     highPct,
     narrative: summary.narrative,
+  };
+}
+
+export function buildPerformersCard(
+  direction: 'top' | 'bottom',
+  rows: PerformerRow[],
+  scope: { accountLabel?: string | null; period?: string | null },
+  audience: Audience,
+): TopPerformersCard | BottomPerformersCard {
+  const scopeBits = [scope.accountLabel ?? 'All accounts', formatPeriod(scope.period)].filter(
+    Boolean,
+  );
+  const lead =
+    direction === 'top' ? `Top ${rows.length} performers` : `Lowest ${rows.length} performers`;
+  const title = `${lead}${scopeBits.length ? ` — ${scopeBits.join(', ')}` : ''}`;
+  const employees = rows.map((row, i) => {
+    // Short "why they're here": classification + score, plus the server-derived
+    // note (DS-08 perf_risk_note) when it adds signal beyond "No flags".
+    const hasNote = row.note && row.note !== 'No flags';
+    const reason = `${row.classification}, avg score ${row.score}${hasNote ? ` — ${row.note}` : ''}`;
+    return {
+      rank: i + 1,
+      memberId: row.memberId,
+      // BOD aggregate guardrail: individual names are not surfaced in a list.
+      name: audience === 'bod' ? row.memberId : row.name,
+      score: row.score,
+      classification: row.classification,
+      reason,
+    };
+  });
+  return direction === 'top'
+    ? { type: 'top_performers', title, employees }
+    : { type: 'bottom_performers', title, employees };
+}
+
+export function buildNormExplainerCard(
+  profile: ProfileSnapshot,
+  norm: NormResult,
+): NormExplainerCard {
+  const e = profile.employee;
+  const perf = latest(profile.performance);
+  const triggered = norm.layerA.filter((r) => r.triggered);
+  const composite = toCardRisk(norm.compositeRiskBaseline);
+  const summary =
+    triggered.length === 0
+      ? `No NORM rules triggered (${norm.layerA.length} evaluated); composite risk: ${composite}.`
+      : `${triggered.length} of ${norm.layerA.length} NORM rules triggered; composite risk: ${composite}.`;
+  return {
+    type: 'norm_explainer',
+    employee: { memberId: e?.memberId ?? 'unknown', name: e?.name ?? 'Unknown' },
+    reviewPeriod: formatPeriod(perf?.period ?? null),
+    compositeRisk: composite,
+    triggeredCount: triggered.length,
+    evaluatedCount: norm.layerA.length,
+    rules: triggered.map((r) => ({
+      ruleId: r.ruleId,
+      category: r.category,
+      classification: r.classification,
+      detail: r.detail,
+    })),
+    summary,
   };
 }
 

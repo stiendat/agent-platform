@@ -70,6 +70,13 @@ async function main(): Promise<void> {
   // 5. Account-level workforce summary (BOD).
   await render('account_summary', 'bod', { card_type: 'account_summary' });
 
+  // 5a. Top-K and bottom-K performer rankings (with a per-employee reason).
+  await render('top_performers', 'hr', { card_type: 'top_performers', limit: 3 });
+  await render('bottom_performers', 'leader', { card_type: 'bottom_performers', limit: 3 });
+
+  // 5b. NORM explainer — the deterministic "why" behind an employee's risk.
+  await render('norm_explainer', 'hr', { card_type: 'norm_explainer', member_id: 'EMP-031' });
+
   // 6. RBAC guardrail — Leader asks for sensitive HR content → access denied.
   await render('access_denied (Leader requests sensitive HR content)', 'leader', {
     card_type: 'employee_profile_report',

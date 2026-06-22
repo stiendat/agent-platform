@@ -142,6 +142,17 @@ export const AccountRiskSummarySchema = z.object({
 });
 export type AccountRiskSummary = z.infer<typeof AccountRiskSummarySchema>;
 
+/** One employee in a performer ranking (top-K / bottom-K), pre-scored. */
+export const PerformerRowSchema = z.object({
+  memberId: z.string(),
+  name: z.string(),
+  score: z.number(),
+  classification: z.string(),
+  /** Server-derived note (the DS-08 perf_risk_note) used to explain the ranking. */
+  note: z.string(),
+});
+export type PerformerRow = z.infer<typeof PerformerRowSchema>;
+
 export const NormResultSchema = z.object({
   /** Deterministic Layer A — all evaluated threshold rules. */
   layerA: z.array(NormRuleResultSchema),

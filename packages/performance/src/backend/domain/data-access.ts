@@ -4,9 +4,18 @@ import type {
   AtRiskEntry,
   EmployeeProfile,
   PerformanceData,
+  PerformerRow,
   TimesheetData,
   ViolationSummary,
 } from './schemas.ts';
+
+/** Options for a performer ranking query. */
+export interface PerformerQuery {
+  direction: 'top' | 'bottom';
+  limit: number;
+  accountId?: string;
+  period?: string;
+}
 
 /**
  * The coordination boundary between the AI engineer (tools + agent logic) and
@@ -42,6 +51,8 @@ export interface DataAccessPorts {
     tenantId: string,
     opts?: { accountId?: string; period?: string },
   ): Promise<AccountRiskSummary>;
+  /** Top-K or bottom-K performers by score, optionally scoped to one account. */
+  listPerformers(tenantId: string, query: PerformerQuery): Promise<PerformerRow[]>;
 }
 
 // --- In-memory mock (draft) -------------------------------------------------
@@ -147,6 +158,53 @@ const MOCK_ACCOUNT_SUMMARY: AccountRiskSummary = {
     'manager action. Account B has the highest concentration of risk (3 high-risk employees).',
 };
 
+// Performer roster mock — a spread of scores so top-K / bottom-K are meaningful.
+const MOCK_PERFORMERS: PerformerRow[] = [
+  {
+    memberId: 'EMP-013',
+    name: 'EMP-013',
+    score: 4.8,
+    classification: 'Excellent',
+    note: 'Top Performer',
+  },
+  {
+    memberId: 'EMP-007',
+    name: 'EMP-007',
+    score: 4.5,
+    classification: 'Excellent',
+    note: 'Top Performer',
+  },
+  { memberId: 'EMP-052', name: 'EMP-052', score: 4.1, classification: 'Good', note: 'No flags' },
+  {
+    memberId: 'EMP-019',
+    name: 'EMP-019',
+    score: 2.6,
+    classification: 'Meets Expectations',
+    note: 'No flags',
+  },
+  {
+    memberId: 'EMP-044',
+    name: 'EMP-044',
+    score: 2.2,
+    classification: 'Below Expectations',
+    note: 'Low KPI (<2.5); Multiple Open Violations',
+  },
+  {
+    memberId: 'EMP-031',
+    name: 'EMP-031',
+    score: 2.2,
+    classification: 'At Risk',
+    note: 'Low KPI (<2.5); High-Risk Violation',
+  },
+  {
+    memberId: 'EMP-088',
+    name: 'EMP-088',
+    score: 1.4,
+    classification: 'Poor',
+    note: 'Low KPI (<2.5); Benched',
+  },
+];
+
 class InMemoryDataAccess implements DataAccessPorts {
   async getEmployeeProfile(_tenantId: string, memberId: string): Promise<EmployeeProfile | null> {
     return MOCK[memberId]?.employee ?? null;
@@ -190,6 +248,12 @@ class InMemoryDataAccess implements DataAccessPorts {
   ): Promise<AccountRiskSummary> {
     void opts;
     return MOCK_ACCOUNT_SUMMARY;
+  }
+  async listPerformers(_tenantId: string, query: PerformerQuery): Promise<PerformerRow[]> {
+    const sorted = [...MOCK_PERFORMERS].sort((a, b) =>
+      query.direction === 'top' ? b.score - a.score : a.score - b.score,
+    );
+    return sorted.slice(0, Math.max(1, query.limit));
   }
 }
 

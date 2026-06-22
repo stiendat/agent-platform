@@ -1,13 +1,14 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { performanceDb } from '../db/client.ts';
 import * as t from '../db/schema.ts';
-import type { DataAccessPorts } from './data-access.ts';
+import type { DataAccessPorts, PerformerQuery } from './data-access.ts';
 import type {
   AccountRiskSummary,
   AllocationData,
   AtRiskEntry,
   EmployeeProfile,
   PerformanceData,
+  PerformerRow,
   RiskLevel,
   TimesheetData,
   ViolationSummary,
@@ -339,6 +340,40 @@ class DrizzlePerformanceDataAccess implements DataAccessPorts {
         `Overall talent risk is ${tone}. ${high} employee${high === 1 ? '' : 's'} flagged ` +
         `high-risk require manager action out of ${total} in scope.`,
     };
+  }
+
+  async listPerformers(tenantId: string, query: PerformerQuery): Promise<PerformerRow[]> {
+    const db = performanceDb();
+    const where = [eq(t.performanceProfile.tenant_id, tenantId)];
+    if (query.accountId) {
+      const members = await this.memberIdsForAccount(tenantId, query.accountId);
+      if (members.length === 0) return [];
+      where.push(inArray(t.performanceProfile.member_id, members));
+    }
+    const rows = await db
+      .select({
+        member_id: t.performanceProfile.member_id,
+        avg_score_t3_t4: t.performanceProfile.avg_score_t3_t4,
+        classification_latest: t.performanceProfile.classification_latest,
+        perf_risk_note: t.performanceProfile.perf_risk_note,
+      })
+      .from(t.performanceProfile)
+      .where(and(...where))
+      // NULL scores sort last either way; ranking is by the aggregated T3–T4 score.
+      .orderBy(
+        query.direction === 'top'
+          ? desc(t.performanceProfile.avg_score_t3_t4)
+          : asc(t.performanceProfile.avg_score_t3_t4),
+      )
+      .limit(Math.max(1, query.limit));
+
+    return rows.map((row) => ({
+      memberId: row.member_id,
+      name: row.member_id, // no PII name stored
+      score: row.avg_score_t3_t4 ?? 0,
+      classification: row.classification_latest,
+      note: row.perf_risk_note,
+    }));
   }
 }
 

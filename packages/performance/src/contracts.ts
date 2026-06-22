@@ -5,6 +5,7 @@ export type {
   AccessDeniedCard,
   AccountSummaryCard,
   AtRiskListCard,
+  BottomPerformersCard,
   CardMetric,
   CardPayload,
   CardRiskLevel,
@@ -12,6 +13,10 @@ export type {
   EmployeeProfileCard,
   HumanReviewFlagCard,
   InlineTranscriptCard,
+  NormExplainerCard,
+  NormRuleExplanation,
+  PerformerEntry,
+  TopPerformersCard,
 } from './backend/cards/schema.ts';
 
 // The card contract — the structured payload the ARIA agent returns via the
