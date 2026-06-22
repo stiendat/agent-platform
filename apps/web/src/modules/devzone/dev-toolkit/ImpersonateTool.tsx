@@ -35,6 +35,10 @@ export function ImpersonateTool({ onImpersonated }: Props) {
 
   useEffect(() => {
     inputRef.current?.focus();
+    // Initial roster load on mount — fetching from an external system is the
+    // sanctioned use of an effect; the loading flag is intentional, not a
+    // cascading render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void doSearch('');
   }, [doSearch]);
 

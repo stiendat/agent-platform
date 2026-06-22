@@ -1,4 +1,6 @@
 import type { AgentTool } from '@seta/agent-sdk';
+import { createCustomDashboardTool } from './agent-tools/create-custom-dashboard.ts';
+import { createDashboardWidgetTool } from './agent-tools/create-dashboard-widget.ts';
 import { evaluateNormTool } from './agent-tools/evaluate-norm.ts';
 import { formatOutputTool } from './agent-tools/format-output.ts';
 import { getAllocationTool } from './agent-tools/get-allocation.ts';
@@ -15,4 +17,6 @@ export const performanceAgentTools: AgentTool[] = [
   getAllocationTool,
   evaluateNormTool,
   formatOutputTool,
+  createDashboardWidgetTool,
+  createCustomDashboardTool,
 ];

@@ -23,6 +23,10 @@ const DEDICATED_TOOL_IDS = new Set([
   'identity_whoAmI',
   'identity_listMyRoles',
   'performance_renderCard',
+  'performance_renderReport',
+  'performance_createDashboardWidget',
+  'performance_updateDashboardWidget',
+  'performance_createCustomDashboard',
 ]);
 
 function ServerTimeRegistration({ name }: { name: string }) {
@@ -97,6 +101,43 @@ function PerformanceCardRegistration() {
   // The card is rendered from the persisted data-result part (see DataResultPart),
   // so suppress the transient tool-call pill to avoid a duplicate / flicker.
   useAssistantToolUI({ toolName: 'performance_renderCard', render: () => null });
+  useAssistantToolUI({ toolName: 'performance_renderReport', render: () => null });
+  return null;
+}
+
+function DashboardWidgetRegistration() {
+  useAssistantToolUI({
+    toolName: 'performance_createDashboardWidget',
+    render: (props) => {
+      const state = (() => {
+        if (props.status.type === 'complete')
+          return props.isError ? 'output-error' : 'output-available';
+        if (props.status.type === 'incomplete') return 'output-error';
+        return 'input-streaming';
+      })();
+      if (state === 'output-available') return null; // widget appears on canvas, not in chat
+      if (state === 'output-error') return null;
+      return null;
+    },
+  });
+  useAssistantToolUI({
+    toolName: 'performance_updateDashboardWidget',
+    render: () => null, // edit lands on the canvas widget, not in chat
+  });
+  useAssistantToolUI({
+    toolName: 'performance_createCustomDashboard',
+    render: (props) => {
+      const state = (() => {
+        if (props.status.type === 'complete')
+          return props.isError ? 'output-error' : 'output-available';
+        if (props.status.type === 'incomplete') return 'output-error';
+        return 'input-streaming';
+      })();
+      if (state === 'output-available') return null;
+      if (state === 'output-error') return null;
+      return null;
+    },
+  });
   return null;
 }
 
@@ -128,6 +169,7 @@ export function ToolUIRegistry() {
       <WhoAmIRegistration name={nameFor('identity_whoAmI')} />
       <ListMyRolesRegistration name={nameFor('identity_listMyRoles')} />
       <PerformanceCardRegistration />
+      <DashboardWidgetRegistration />
       {tools
         .filter((t) => !DEDICATED_TOOL_IDS.has(t.id))
         .map((t) => (

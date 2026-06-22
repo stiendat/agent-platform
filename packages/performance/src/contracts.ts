@@ -36,6 +36,28 @@ export {
   CardPayloadSchema,
   CardRiskLevelSchema,
 } from './backend/cards/schema.ts';
+// Custom dashboard types — shared with the ARIA frontend.
+export type {
+  CardWidgetContent,
+  CustomDashboard,
+  DashboardWidget,
+  HeaderWidgetContent,
+  IndicatorWidgetContent,
+  ListWidgetContent,
+  TextWidgetContent,
+  WidgetContent,
+  WidgetLayout,
+  WidgetType,
+} from './backend/custom-dashboards/types.ts';
+export {
+  CreateDashboardInputSchema,
+  CreateWidgetInputSchema,
+  CustomDashboardSchema,
+  DashboardWidgetSchema,
+  UpdateDashboardPatchSchema,
+  WidgetContentSchema,
+  WidgetLayoutSchema,
+} from './backend/custom-dashboards/types.ts';
 export type {
   AllocationData,
   EmployeeProfile,

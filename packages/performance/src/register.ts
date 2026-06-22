@@ -6,6 +6,7 @@ import { performanceAgentTools } from './backend/agent-tools.ts';
 import * as schema from './backend/db/schema.ts';
 import { setDataAccess } from './backend/domain/data-access.ts';
 import { makeDbDataAccess } from './backend/domain/db-data-access.ts';
+import { buildPerformanceRoutes } from './backend/http/index.ts';
 import { PERFORMANCE_EVENTS } from './events.ts';
 import { performanceRbac } from './rbac.ts';
 
@@ -24,5 +25,6 @@ export function registerPerformanceContributions(reg: ContributionRegistry): voi
     rbac: performanceRbac,
     agentTools: performanceAgentTools,
     agentSpecs: performanceAgentSpecs,
+    routes: { mountAt: '/', build: buildPerformanceRoutes },
   });
 }

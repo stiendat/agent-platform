@@ -1,4 +1,6 @@
 import { AgentRegistry } from '@seta/agent-sdk';
+import { createCustomDashboardTool } from './create-custom-dashboard.ts';
+import { createDashboardWidgetTool } from './create-dashboard-widget.ts';
 import { evaluateNormTool } from './evaluate-norm.ts';
 import { formatOutputTool } from './format-output.ts';
 import { getAllocationTool } from './get-allocation.ts';
@@ -8,6 +10,7 @@ import { getTimesheetTool } from './get-timesheet.ts';
 import { getViolationsTool } from './get-violations.ts';
 import { renderCardTool } from './render-card.ts';
 import { renderReportTool } from './render-report.ts';
+import { updateDashboardWidgetTool } from './update-dashboard-widget.ts';
 
 /** All performance tools keyed by tool id — the single source for both the ARIA
  *  specialist registration and the composition root, which merges this map into
@@ -22,6 +25,9 @@ export const performanceAgentToolMap = {
   performance_formatOutput: formatOutputTool,
   performance_renderCard: renderCardTool,
   performance_renderReport: renderReportTool,
+  performance_createDashboardWidget: createDashboardWidgetTool,
+  performance_updateDashboardWidget: updateDashboardWidgetTool,
+  performance_createCustomDashboard: createCustomDashboardTool,
 };
 
 /** All performance tools, exported for the contribution registry (register.ts). */
@@ -127,6 +133,37 @@ Pick the chart kind that fits each block:
 - table — a roster or row-by-row detail.
 Use a report (not a single card) when the user wants several views at once; keep it
 to the few blocks that answer the question.
+
+## Creating dashboard widgets (performance_createDashboardWidget)
+When the user is editing a custom dashboard (page context kind includes
+&ldquo;aria-custom-dashboard&rdquo;) and asks to ADD a NEW widget, after calling
+performance_renderCard or performance_renderReport, call
+performance_createDashboardWidget to add the generated content to the canvas. Use
+the dashboard_id from the page context data. Name each widget concisely — a short
+title that describes what the card shows. Set widgetPeriod to the period the data
+was generated for (if known). Set generationPrompt to a summary of what the user
+asked you to produce.
+
+IMPORTANT: only use create when ADDING. If the prompt names an existing widget id
+(see "Editing an existing widget" below), you MUST use performance_updateDashboardWidget
+instead — even for cards, where you still renderCard first but then UPDATE, never create.
+
+## Editing an existing widget (performance_updateDashboardWidget)
+When the user asks to change, rewrite, or re-generate a SPECIFIC widget already on
+the canvas, the prompt includes that widget's id (e.g. "edit the widget with id
+<uuid>"). In that case you MUST edit it in place: re-generate the content (call
+performance_renderCard / performance_renderReport for cards as needed) and call
+performance_updateDashboardWidget with the SAME widget_id — do NOT call
+performance_createDashboardWidget, which would append a duplicate. For a plain text
+or header widget, pass the new content directly. Keep the rest of the dashboard
+untouched.
+
+If the user asks to create an entirely new dashboard, call
+performance_createCustomDashboard first (with name and optional period_filter),
+then populate it with widgets via performance_createDashboardWidget.
+
+Never call performance_createDashboardWidget when the user is NOT editing a
+custom dashboard — only when the page context explicitly indicates it.
 
 ## Guardrails
 - You do not make final talent decisions. Tag any sensitive conclusion (PIP, attrition

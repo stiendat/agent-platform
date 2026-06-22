@@ -30,11 +30,16 @@ export function DevToolkit() {
     });
   }, []);
 
-  // Push page content below the banner so it isn't obscured
+  // Push page content below the banner so it isn't obscured. The CSS var lets
+  // the app shell shrink by the same amount (it reads --app-inset-top), so the
+  // banner adds zero document overflow instead of forcing a whole-page scroll.
   useEffect(() => {
+    const root = document.documentElement;
     document.body.style.paddingTop = impersonating ? '28px' : '';
+    root.style.setProperty('--app-inset-top', impersonating ? '28px' : '0px');
     return () => {
       document.body.style.paddingTop = '';
+      root.style.removeProperty('--app-inset-top');
     };
   }, [impersonating]);
 

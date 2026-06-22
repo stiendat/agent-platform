@@ -1,5 +1,13 @@
 export { assembleProfile } from './backend/domain/assemble.ts';
 export {
+  createCustomDashboard,
+  deleteCustomDashboard,
+  getCustomDashboard,
+  listCustomDashboards,
+  saveCustomDashboardFull,
+  saveWidget,
+} from './backend/domain/custom-dashboards/index.ts';
+export {
   type DataAccessPorts,
   getDataAccess,
   setDataAccess,
