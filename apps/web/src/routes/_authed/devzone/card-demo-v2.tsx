@@ -5,6 +5,7 @@ import type {
   EmployeeProfileCard as EmployeeProfileCardData,
   HumanReviewFlagCard as HumanReviewFlagCardData,
   InlineTranscriptCard as InlineTranscriptCardData,
+  ReportCard as ReportCardData,
 } from '@seta/performance/contracts';
 import { PageChrome } from '@seta/shared-ui';
 import { createFileRoute } from '@tanstack/react-router';
@@ -16,6 +17,7 @@ import {
   EmployeeProfileCard,
   HumanReviewFlagCard,
   InlineTranscriptCard,
+  ReportCard,
 } from '@/modules/agent/chat-experience/cards';
 
 export const Route = createFileRoute('/_authed/devzone/card-demo-v2')({
@@ -114,6 +116,60 @@ const ACCESS_DENIED: AccessDeniedCardData = {
   requiredRole: 'HR role required',
 };
 
+// An AI-composed report: the agent gathered EMP-031 / Account B numbers with the
+// read tools, then passed these blocks (pie/bar/line/table) to performance_renderReport.
+const REPORT_CARD: ReportCardData = {
+  type: 'report',
+  title: 'EMP-031 — April 2026 performance report',
+  summary: 'KPI below target with a worsening 2-month trend; one open violation.',
+  blocks: [
+    {
+      kind: 'bar',
+      title: 'KPI vs target',
+      unit: 'pt',
+      data: [
+        { label: 'KPI', value: 2.2 },
+        { label: 'Target', value: 3 },
+      ],
+    },
+    {
+      kind: 'line',
+      title: 'KPI trend',
+      unit: null,
+      series: [
+        {
+          name: 'KPI',
+          points: [
+            { x: '2026-03', y: 2.8 },
+            { x: '2026-04', y: 2.2 },
+          ],
+        },
+      ],
+    },
+    {
+      kind: 'pie',
+      title: 'Account B — risk mix',
+      data: [
+        { label: 'High', value: 1 },
+        { label: 'Medium', value: 2 },
+        { label: 'Low', value: 9 },
+      ],
+    },
+    {
+      kind: 'table',
+      title: 'Key metrics',
+      columns: ['Metric', 'Value'],
+      rows: [
+        ['KPI', '2.2 (target 3)'],
+        ['Overtime', '48h (+8 over limit)'],
+        ['Open violations', 1],
+        ['Allocation', '110%'],
+        ['NORM result', 'At Risk'],
+      ],
+    },
+  ],
+};
+
 // ─── Page ───────────────────────────────────────────────────────────────────────
 
 function SectionLabel({ children, note }: { children: React.ReactNode; note?: string }) {
@@ -179,6 +235,13 @@ function CardDemoV2Page() {
           <SectionLabel note="RBAC guardrail">access_denied</SectionLabel>
           <div className="max-w-md">
             <AccessDeniedCard card={ACCESS_DENIED} />
+          </div>
+        </section>
+
+        <section>
+          <SectionLabel note="AI-composed charts · pie/bar/line/table">report</SectionLabel>
+          <div className="max-w-xl">
+            <ReportCard card={REPORT_CARD} />
           </div>
         </section>
       </div>

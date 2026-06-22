@@ -198,6 +198,12 @@ function instructionsText(cap: number): string {
     'salary band, or HR notes (the tool denies it for non-HR roles). performance_renderCard',
     'assembles the data and enforces redaction — never invent employee numbers; render the card,',
     'then add at most one short sentence of prose.',
+    'When the user wants a data-rich REPORT or dashboard of several charts (not one fixed',
+    'card), use performance_renderReport instead: first gather the numbers with the',
+    'performance_get* read tools, then pass ONLY the values they returned as chart blocks —',
+    'pie (parts of a whole), bar (compare categories), line (a trend over period), table',
+    '(a roster/detail). Never invent, estimate, or recompute a number; if a read tool',
+    'returned null for a field, leave it out. This is the last tool you call for that turn.',
     '',
     'DOCUMENT / GENERAL QUESTION — when the user asks a general question, a',
     'conversational follow-up, or anything about an attached document (its text is',
@@ -499,10 +505,18 @@ function results(res: MastraToolSignals, name: string): unknown[] {
 }
 
 function assemble(res: MastraToolSignals): OrchestratorResult {
-  // A rendered UI card (ARIA's performance_renderCard) is a terminal answer: the
-  // card IS the result. Surface the latest one so it persists as a data-result.
-  const cards = results(res, 'performance_renderCard') as Array<{ card?: unknown }>;
-  const lastCard = cards.at(-1)?.card;
+  // A rendered UI card is a terminal answer: the card IS the result. Both
+  // performance_renderCard (fixed cards) and performance_renderReport (AI-composed
+  // chart reports) return `{ card }`; surface the latest across either, preserving
+  // call order, so it persists as a data-result.
+  const cardResults = res.toolResults
+    .filter(
+      (t) =>
+        t.payload.toolName === 'performance_renderCard' ||
+        t.payload.toolName === 'performance_renderReport',
+    )
+    .map((t) => t.payload.result) as Array<{ card?: unknown }>;
+  const lastCard = cardResults.at(-1)?.card;
   if (lastCard !== undefined) return { card: lastCard };
 
   const ta = results(res, 'staffing_analyzeTasks') as TaskAnalyzerOutput[];

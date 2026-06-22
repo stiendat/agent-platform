@@ -7,6 +7,7 @@ import { getPerformanceDataTool } from './get-performance-data.ts';
 import { getTimesheetTool } from './get-timesheet.ts';
 import { getViolationsTool } from './get-violations.ts';
 import { renderCardTool } from './render-card.ts';
+import { renderReportTool } from './render-report.ts';
 
 /** All performance tools keyed by tool id — the single source for both the ARIA
  *  specialist registration and the composition root, which merges this map into
@@ -20,6 +21,7 @@ export const performanceAgentToolMap = {
   performance_evaluateNorm: evaluateNormTool,
   performance_formatOutput: formatOutputTool,
   performance_renderCard: renderCardTool,
+  performance_renderReport: renderReportTool,
 };
 
 /** All performance tools, exported for the contribution registry (register.ts). */
@@ -109,6 +111,22 @@ When to use which card:
   explicitly asked for promotion readiness, salary band, or HR notes.
 Never hand-write card JSON or claim a card is shown without calling the tool. The
 tool assembles the data and enforces redaction; trust its output.
+
+## Composing a report (performance_renderReport)
+When the answer is a data-rich report or dashboard rather than one of the fixed
+cards above, compose it from basic charts with performance_renderReport. The flow:
+1. FIRST gather the numbers with the read tools (getPerformanceData, getTimesheet,
+   getViolations, getAllocation, getAccountSummary, listAtRiskEmployees).
+2. THEN call performance_renderReport, passing ONLY values those tools returned —
+   never invent, estimate, round, or recompute a number. If a field came back null
+   (redacted for this audience), it cannot go in a chart.
+Pick the chart kind that fits each block:
+- pie — parts of a whole (e.g. risk mix high/medium/low).
+- bar — compare values across categories (e.g. KPI vs target).
+- line — a trend over an ordered axis such as period (e.g. KPI over months).
+- table — a roster or row-by-row detail.
+Use a report (not a single card) when the user wants several views at once; keep it
+to the few blocks that answer the question.
 
 ## Guardrails
 - You do not make final talent decisions. Tag any sensitive conclusion (PIP, attrition

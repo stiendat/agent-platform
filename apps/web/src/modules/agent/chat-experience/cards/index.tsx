@@ -37,6 +37,7 @@ import {
 import { useCallback, useState } from 'react';
 import { AskAria, AskAriaProvider, type AskAriaSend, AskGlyph, interactive } from './ask-aria';
 import { type Cell, downloadCsv, downloadXls } from './export';
+import { ReportCard } from './report';
 import {
   allocationTone,
   kpiTone,
@@ -681,10 +682,14 @@ function CardBody({ card }: { card: CardPayload }) {
       return <HumanReviewFlagCard card={card} />;
     case 'access_denied':
       return <AccessDeniedCard card={card} />;
+    case 'report':
+      return <ReportCard card={card} />;
     default:
       return null;
   }
 }
+
+export { ReportCard };
 
 /**
  * Renders an ARIA card in the live transcript. Provides Ask-ARIA a `send` bound to
