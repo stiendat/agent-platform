@@ -183,6 +183,80 @@ export const NormExplainerCardSchema = z.object({
 });
 export type NormExplainerCard = z.infer<typeof NormExplainerCardSchema>;
 
+// --- 10. Report (AI-composed multi-chart report) --------------------------
+/**
+ * Unlike the six fixed cards above, a report is COMPOSED by the agent: it
+ * gathers numbers with the read tools, then passes the data + chart kinds into
+ * `performance_renderReport`, which validates this shape. Charts cover only
+ * non-sensitive performance metrics; sensitive HR fields are redacted upstream
+ * at the read-tool boundary, so they never reach a chart.
+ */
+
+/** A single labelled value for a pie/bar chart, e.g. { label: "KPI", value: 2.2 }. */
+export const ChartDatumSchema = z.object({ label: z.string(), value: z.number() });
+export type ChartDatum = z.infer<typeof ChartDatumSchema>;
+
+/** Pie: parts of a whole (e.g. risk mix high/medium/low). */
+export const PieBlockSchema = z.object({
+  kind: z.literal('pie'),
+  title: z.string(),
+  data: z.array(ChartDatumSchema).min(1),
+});
+export type PieBlock = z.infer<typeof PieBlockSchema>;
+
+/** Bar: compare values across categories (e.g. KPI vs target). */
+export const BarBlockSchema = z.object({
+  kind: z.literal('bar'),
+  title: z.string(),
+  /** Unit appended in tooltips/axis, e.g. "h" or "pt"; null for none. */
+  unit: z.string().nullable().default(null),
+  data: z.array(ChartDatumSchema).min(1),
+});
+export type BarBlock = z.infer<typeof BarBlockSchema>;
+
+/** One named line in a line chart; points are ordered by `x` (e.g. period). */
+export const LineSeriesSchema = z.object({
+  name: z.string(),
+  points: z.array(z.object({ x: z.string(), y: z.number() })).min(1),
+});
+export type LineSeries = z.infer<typeof LineSeriesSchema>;
+
+/** Line: a trend over an ordered axis (e.g. KPI over months). */
+export const LineBlockSchema = z.object({
+  kind: z.literal('line'),
+  title: z.string(),
+  unit: z.string().nullable().default(null),
+  series: z.array(LineSeriesSchema).min(1),
+});
+export type LineBlock = z.infer<typeof LineBlockSchema>;
+
+/** Table: rows of detail (e.g. an at-risk roster). */
+export const TableBlockSchema = z.object({
+  kind: z.literal('table'),
+  title: z.string(),
+  columns: z.array(z.string()).min(1),
+  rows: z.array(z.array(z.union([z.string(), z.number()]))),
+});
+export type TableBlock = z.infer<typeof TableBlockSchema>;
+
+/** The chart blocks a report can contain. Discriminated on `kind`. */
+export const ReportBlockSchema = z.discriminatedUnion('kind', [
+  PieBlockSchema,
+  BarBlockSchema,
+  LineBlockSchema,
+  TableBlockSchema,
+]);
+export type ReportBlock = z.infer<typeof ReportBlockSchema>;
+
+export const ReportCardSchema = z.object({
+  type: z.literal('report'),
+  title: z.string(),
+  /** One-line framing for the report; optional. */
+  summary: z.string().nullable().default(null),
+  blocks: z.array(ReportBlockSchema).min(1).max(6),
+});
+export type ReportCard = z.infer<typeof ReportCardSchema>;
+
 /**
  * The full card union the frontend ingests. Discriminated on `type` so both the
  * Zod parser and the frontend renderer can switch exhaustively.
@@ -197,6 +271,7 @@ export const CardPayloadSchema = z.discriminatedUnion('type', [
   TopPerformersCardSchema,
   BottomPerformersCardSchema,
   NormExplainerCardSchema,
+  ReportCardSchema,
 ]);
 export type CardPayload = z.infer<typeof CardPayloadSchema>;
 
@@ -211,5 +286,6 @@ export const CARD_TYPES = [
   'top_performers',
   'bottom_performers',
   'norm_explainer',
+  'report',
 ] as const;
 export type CardType = (typeof CARD_TYPES)[number];
