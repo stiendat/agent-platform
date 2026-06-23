@@ -49,9 +49,12 @@ function sliceColor(label: string, index: number): string {
   return SERIES_COLORS[index % SERIES_COLORS.length] as string;
 }
 
-function BlockShell({ title, children }: { title: string; children: React.ReactNode }) {
+// A single block is just a labelled chart — no border or background of its own.
+// The card frame is the only frame; nested boxes (card-in-card) broke the uniform
+// look against sibling cards, which carry one flat frame.
+function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-md border border-hairline bg-surface-1 p-3">
+    <section>
       <h4 className="mb-2 text-caption font-medium uppercase tracking-wide text-ink-subtle">
         {title}
       </h4>
@@ -68,9 +71,9 @@ function PieBlockView({ block }: { block: PieBlock }) {
     color: sliceColor(d.label, i),
   }));
   return (
-    <BlockShell title={block.title}>
+    <Block title={block.title}>
       <DonutChart slices={slices} legend="right" height={200} />
-    </BlockShell>
+    </Block>
   );
 }
 
@@ -78,14 +81,14 @@ function BarBlockView({ block }: { block: BarBlock }) {
   const rows = block.data.map((d) => ({ label: d.label, value: d.value }));
   const name = block.unit ? `Value (${block.unit})` : 'Value';
   return (
-    <BlockShell title={block.title}>
+    <Block title={block.title}>
       <StackedBarChart
         rows={rows}
         series={[{ key: 'value', name, color: 'var(--color-primary)' }]}
         orientation="vertical"
         height={220}
       />
-    </BlockShell>
+    </Block>
   );
 }
 
@@ -106,7 +109,7 @@ function LineBlockView({ block }: { block: LineBlock }) {
   }
   const data = order.map((x) => byX.get(x) as Record<string, string | number>);
   return (
-    <BlockShell title={block.title}>
+    <Block title={block.title}>
       <ResponsiveContainer width="100%" height={220}>
         <LineChart data={data} margin={{ left: 4, right: 16, top: 8, bottom: 4 }}>
           <CartesianGrid stroke={CHART_GRID_STROKE} vertical={false} />
@@ -131,13 +134,13 @@ function LineBlockView({ block }: { block: LineBlock }) {
           ))}
         </LineChart>
       </ResponsiveContainer>
-    </BlockShell>
+    </Block>
   );
 }
 
 function TableBlockView({ block }: { block: TableBlock }) {
   return (
-    <BlockShell title={block.title}>
+    <Block title={block.title}>
       <div className="flex justify-end">
         <button
           type="button"
@@ -177,7 +180,7 @@ function TableBlockView({ block }: { block: TableBlock }) {
           </tbody>
         </table>
       </div>
-    </BlockShell>
+    </Block>
   );
 }
 
@@ -196,17 +199,29 @@ function ReportBlockView({ block }: { block: ReportBlock }) {
   }
 }
 
-/** AI-composed report card: a titled stack of basic charts (pie/bar/line/table). */
+/**
+ * AI-composed report card: a titled stack of basic charts (pie/bar/line/table).
+ *
+ * Carries the same single frame + header bar as its sibling cards (see
+ * cards/index.tsx) so it reads uniformly in both the chat transcript and on a
+ * custom dashboard. On a dashboard the grid wrapper draws an identical frame at
+ * the same radius; the two overlap to one line — exactly how the data cards
+ * behave. Blocks are separated by hairline dividers, never nested boxes.
+ */
 export function ReportCard({ card }: { card: ReportCardData }) {
   return (
-    <div className="flex flex-col gap-3">
-      <header>
+    <div className="overflow-hidden rounded-xl border border-hairline bg-surface-1">
+      <header className="border-b border-hairline bg-surface-2 px-4 py-3.5">
         <h3 className="text-body font-semibold text-ink">{card.title}</h3>
         {card.summary && <p className="mt-0.5 text-body-sm text-ink-subtle">{card.summary}</p>}
       </header>
-      {card.blocks.map((block) => (
-        <ReportBlockView key={`${block.kind}:${block.title}`} block={block} />
-      ))}
+      <div className="divide-y divide-hairline px-4">
+        {card.blocks.map((block) => (
+          <div key={`${block.kind}:${block.title}`} className="py-4 first:pt-3 last:pb-3">
+            <ReportBlockView block={block} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -36,9 +36,9 @@ export function AgentComposer({ compact = false }: AgentComposerProps) {
   };
 
   // One-shot pending prompt from external callers (e.g. planner "Suggest
-  // assignee" button). Only autoSend mode is wired today; non-autoSend can
-  // be added later by routing through aui.composer().setText (the local
-  // `value` mirror is updated by aui via the ChatComposer onChange).
+  // assignee" button, dev toolkit Prompt Library). autoSend fires immediately;
+  // otherwise we prefill the visible field — which is driven by local `value`,
+  // not the aui composer, so `setValue` is what the textarea actually reflects.
   useEffect(() => {
     if (!pendingPrompt || isRunning) return;
     const { text, autoSend } = pendingPrompt;
@@ -48,7 +48,10 @@ export function AgentComposer({ compact = false }: AgentComposerProps) {
       aui.composer().send();
       return;
     }
-    aui.composer().setText(text);
+    // One-shot prefill of the visible field in response to an external trigger;
+    // guarded by clearing `pendingPrompt` above so it fires exactly once.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- imperative one-shot sync, not derived state
+    setValue(text);
   }, [pendingPrompt, isRunning, aui, setPendingPrompt]);
 
   return (

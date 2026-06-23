@@ -17,6 +17,8 @@ function makeSession(permissions: string[]): SessionScopeProjection {
     accessible_group_ids: [],
     cross_tenant_read: false,
     tenant_local_password_disabled: false,
+    dev_toolkit_enabled: false,
+    global_flags: { force_expand_reasoning: false },
   };
 }
 

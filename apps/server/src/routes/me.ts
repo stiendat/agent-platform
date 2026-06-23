@@ -1,7 +1,9 @@
 import type { SessionEnv } from '@seta/core';
+import { getGlobalFlags } from '@seta/core';
 import { getUserProfile } from '@seta/identity';
 import { getPool } from '@seta/shared-db';
 import type { Hono } from 'hono';
+import { devToolkitEnabled } from './dev-access.ts';
 
 interface TenantHeader {
   name: string;
@@ -20,9 +22,10 @@ async function getTenantHeader(tenantId: string): Promise<TenantHeader> {
 export function registerMeRoute(app: Hono<SessionEnv>): void {
   app.get('/api/identity/v1/me', async (c) => {
     const scope = c.get('user');
-    const [profile, tenant] = await Promise.all([
+    const [profile, tenant, globalFlags] = await Promise.all([
       getUserProfile(scope.user_id),
       getTenantHeader(scope.tenant_id),
+      getGlobalFlags(),
     ]);
     return c.json({
       user_id: scope.user_id,
@@ -36,6 +39,8 @@ export function registerMeRoute(app: Hono<SessionEnv>): void {
       accessible_group_ids: scope.accessible_group_ids,
       cross_tenant_read: scope.cross_tenant_read,
       tenant_local_password_disabled: tenant.local_password_disabled,
+      dev_toolkit_enabled: devToolkitEnabled(scope),
+      global_flags: globalFlags,
     });
   });
 }

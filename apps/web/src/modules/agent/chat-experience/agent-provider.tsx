@@ -138,7 +138,14 @@ function mintFreshThreadId(): string {
   return id;
 }
 
-export function AgentProvider({ children }: { children: React.ReactNode }) {
+export function AgentProvider({
+  children,
+  forceExpandReasoning,
+}: {
+  children: React.ReactNode;
+  /** When set, every chat renders reasoning/tool calls expanded, ignoring the user's local density preference. Driven by the deployment-wide global flag. */
+  forceExpandReasoning?: boolean;
+}) {
   const { data: catalog } = useModelCatalog();
   const defaultModel = catalog?.default ?? 'auto';
 
@@ -239,7 +246,7 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <DensityProvider>
+    <DensityProvider forceDetailed={forceExpandReasoning}>
       <SelectionContext.Provider value={selectionValue}>
         <PageContextContext.Provider value={pageCtxValue}>
           <PanelUIContext.Provider value={panelUIValue}>

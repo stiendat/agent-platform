@@ -223,6 +223,18 @@ function makeAssistantMessage(authorLabel: string) {
   };
 }
 
+const AriaAssistant = makeAssistantMessage('ARIA');
+
+/**
+ * Shared ARIA-labelled assistant renderer (reasoning + tool calls + chain of
+ * thought). Reused by the dashboard editor's chat when the `force_expand_reasoning`
+ * global flag pins density to 'detailed'. Exported as a component (not the
+ * factory) to keep this file a clean Fast Refresh boundary.
+ */
+export function AriaAssistantMessage() {
+  return <AriaAssistant />;
+}
+
 export function AgentTranscript() {
   const { selection } = useAgentSelection();
   const { pageContext } = usePageContext();

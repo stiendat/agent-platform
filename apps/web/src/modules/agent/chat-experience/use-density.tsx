@@ -17,7 +17,18 @@ interface DensityValue {
 
 const DensityContext = createContext<DensityValue | null>(null);
 
-export function DensityProvider({ children }: { children: ReactNode }) {
+export function DensityProvider({
+  children,
+  forceDetailed = false,
+}: {
+  children: ReactNode;
+  /**
+   * When true, density is pinned to 'detailed' (reasoning + tool calls expanded)
+   * and the user toggle is inert. Set by the deployment-wide
+   * `force_expand_reasoning` global flag.
+   */
+  forceDetailed?: boolean;
+}) {
   const [density, setDensityState] = useState<Density>(readInitial);
   const setDensity = useCallback((d: Density) => {
     setDensityState(d);
@@ -27,7 +38,10 @@ export function DensityProvider({ children }: { children: ReactNode }) {
       // private mode / disabled storage: in-memory only
     }
   }, []);
-  const value = useMemo(() => ({ density, setDensity }), [density, setDensity]);
+  const value = useMemo<DensityValue>(
+    () => (forceDetailed ? { density: 'detailed', setDensity: () => {} } : { density, setDensity }),
+    [forceDetailed, density, setDensity],
+  );
   return <DensityContext.Provider value={value}>{children}</DensityContext.Provider>;
 }
 

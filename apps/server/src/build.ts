@@ -31,7 +31,9 @@ import { createMiddleware } from 'hono/factory';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Pool } from 'pg';
 import { registerCredentialGate } from './routes/credential-gate.ts';
+import { registerDevGlobalFlagRoutes } from './routes/dev-global-flags.ts';
 import { registerDevImpersonateRoutes } from './routes/dev-impersonate.ts';
+import { registerDevRoleRoutes } from './routes/dev-roles.ts';
 import { registerDiscoverRoute } from './routes/discover.ts';
 import { registerEnabledModulesRoute } from './routes/enabled-modules.ts';
 import { registerMeRoute } from './routes/me.ts';
@@ -235,10 +237,13 @@ export function buildServerApp(
   registerMeRoute(app);
   registerPerformanceDashboardRoutes(app);
   registerEnabledModulesRoute(app, reg);
-  if (process.env.NODE_ENV !== 'production') {
-    // dev-only: session impersonation tool for the floating DevToolkit
-    registerDevImpersonateRoutes(app);
-  }
+  // Dev toolkit routes register in every environment; each handler self-gates
+  // via devToolkitEnabled (open in non-prod, admin-only in production) so the
+  // toolkit can run on staging/demo boxes without exposing impersonation or
+  // self role-grant to ordinary production users.
+  registerDevImpersonateRoutes(app);
+  registerDevRoleRoutes(app);
+  registerDevGlobalFlagRoutes(app);
 
   // Module-contributed routes. Each module's build factory mounts its absolute
   // paths inside a fresh Hono app; we attach that app at '/' so the inner paths

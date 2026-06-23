@@ -97,6 +97,8 @@ function buildSession(roles: string[]): SessionScopeProjection {
     accessible_group_ids: ['g1'],
     cross_tenant_read: false,
     tenant_local_password_disabled: false,
+    dev_toolkit_enabled: false,
+    global_flags: { force_expand_reasoning: false },
   };
 }
 
