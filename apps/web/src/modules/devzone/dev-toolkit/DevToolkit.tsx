@@ -1,16 +1,31 @@
-import { BarChart2, LogOut, Terminal, Users, X } from 'lucide-react';
+import {
+  BarChart2,
+  Flag,
+  LogOut,
+  MessageSquareText,
+  ShieldCheck,
+  Terminal,
+  Users,
+  X,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AriaPreviewTool } from './AriaPreviewTool.tsx';
 import { exitImpersonation, getImpersonateStatus } from './api.ts';
+import { GlobalFlagsTool } from './GlobalFlagsTool.tsx';
 import { ImpersonateTool } from './ImpersonateTool.tsx';
+import { PromptLibraryTool } from './PromptLibraryTool.tsx';
+import { RoleEditorTool } from './RoleEditorTool.tsx';
 
 type ImpersonateTarget = { user_id: string; email: string; display_name: string };
 
-type TabId = 'impersonate' | 'aria-preview';
+type TabId = 'impersonate' | 'roles' | 'flags' | 'prompts' | 'aria-preview';
 
 const TABS: { id: TabId; label: string; icon: typeof Users }[] = [
   { id: 'impersonate', label: 'Impersonate', icon: Users },
+  { id: 'roles', label: 'Roles', icon: ShieldCheck },
+  { id: 'flags', label: 'Flags', icon: Flag },
+  { id: 'prompts', label: 'Prompts', icon: MessageSquareText },
   { id: 'aria-preview', label: 'ARIA', icon: BarChart2 },
 ];
 
@@ -123,7 +138,7 @@ export function DevToolkit() {
               ? 'none'
               : 'transform 160ms cubic-bezier(0.16, 1, 0.3, 1), opacity 140ms ease',
           }}
-          className="w-80 rounded-xl border border-hairline overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.5)]"
+          className="w-96 rounded-xl border border-hairline overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.5)]"
         >
           <div style={{ background: 'var(--color-surface-2)' }}>
             {/* Header */}
@@ -147,15 +162,15 @@ export function DevToolkit() {
               </button>
             </div>
 
-            {/* Tab rail */}
-            <div className="flex border-b border-hairline px-1 pt-1">
+            {/* Tab rail — scrolls horizontally if the tabs ever outgrow the panel */}
+            <div className="flex border-b border-hairline px-1 pt-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {TABS.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
                   type="button"
                   onClick={() => setActiveTab(id)}
                   className={[
-                    'flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-mono rounded-t transition-colors',
+                    'flex shrink-0 items-center gap-1 px-2 py-1.5 text-[10px] font-mono rounded-t transition-colors whitespace-nowrap',
                     activeTab === id
                       ? 'text-ink border-b-2 border-primary -mb-px bg-surface-3/50'
                       : 'text-ink-tertiary hover:text-ink-muted',
@@ -172,6 +187,9 @@ export function DevToolkit() {
               {activeTab === 'impersonate' && (
                 <ImpersonateTool onImpersonated={handleImpersonated} />
               )}
+              {activeTab === 'roles' && <RoleEditorTool />}
+              {activeTab === 'flags' && <GlobalFlagsTool />}
+              {activeTab === 'prompts' && <PromptLibraryTool />}
               {activeTab === 'aria-preview' && <AriaPreviewTool />}
             </div>
           </div>

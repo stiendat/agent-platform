@@ -35,11 +35,11 @@ function AuthedLayout() {
   const { session } = Route.useRouteContext();
   return (
     <SessionProvider session={session}>
-      <AgentProvider>
+      <AgentProvider forceExpandReasoning={session.global_flags?.force_expand_reasoning}>
         <ShellWithPanel>
           <Outlet />
         </ShellWithPanel>
-        {import.meta.env.DEV && <DevToolkit />}
+        {session.dev_toolkit_enabled && <DevToolkit />}
       </AgentProvider>
     </SessionProvider>
   );

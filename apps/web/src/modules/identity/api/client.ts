@@ -10,6 +10,10 @@ export interface SessionScopeProjection {
   accessible_group_ids: ReadonlyArray<string>;
   cross_tenant_read: boolean;
   tenant_local_password_disabled: boolean;
+  /** Whether the floating dev toolkit is available to this session. */
+  dev_toolkit_enabled: boolean;
+  /** Deployment-wide runtime flags (see @seta/core GlobalFlags). */
+  global_flags: { force_expand_reasoning: boolean };
 }
 
 export async function fetchMe(signal?: AbortSignal): Promise<SessionScopeProjection | null> {

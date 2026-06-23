@@ -21,6 +21,15 @@ export {
 export { requestIdMiddleware, requestIdStorage } from './composition/request-id.ts';
 export type { OutgoingEmailStatus, TransportKind } from './db/schema/index.ts';
 export {
+  DEFAULT_GLOBAL_FLAGS,
+  GLOBAL_FLAG_KEYS,
+  type GlobalFlagKey,
+  type GlobalFlags,
+  getGlobalFlags,
+  isGlobalFlagKey,
+  setGlobalFlag,
+} from './global-flags.ts';
+export {
   createSessionMiddleware,
   type SessionEnv,
   type SessionMiddlewareDeps,

@@ -2,6 +2,7 @@ import type { SessionEnv } from '@seta/core';
 import { getPool } from '@seta/shared-db';
 import type { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
+import { devToolkitEnabled } from './dev-access.ts';
 
 const SESSION_COOKIE = 'seta.session_token';
 const DEV_ORIGINAL_COOKIE = 'seta-dev-original';
@@ -30,6 +31,7 @@ async function signCookieValue(value: string, secret: string): Promise<string> {
 export function registerDevImpersonateRoutes(app: Hono<SessionEnv>): void {
   // GET — check if currently impersonating
   app.get('/api/identity/v1/dev/impersonate', (c) => {
+    if (!devToolkitEnabled(c.get('user'))) return c.json({ error: 'Forbidden' }, 403);
     const original = getCookie(c, DEV_ORIGINAL_COOKIE);
     if (!original) return c.json({ active: false });
     const scope = c.get('user');
@@ -45,8 +47,9 @@ export function registerDevImpersonateRoutes(app: Hono<SessionEnv>): void {
 
   // POST — start impersonating
   app.post('/api/identity/v1/dev/impersonate', async (c) => {
-    const { user_id } = await c.req.json<{ user_id: string }>();
     const scope = c.get('user');
+    if (!devToolkitEnabled(scope)) return c.json({ error: 'Forbidden' }, 403);
+    const { user_id } = await c.req.json<{ user_id: string }>();
     const pool = getPool('web');
 
     const result = await pool.query<{ id: string; name: string; email: string }>(
@@ -84,6 +87,7 @@ export function registerDevImpersonateRoutes(app: Hono<SessionEnv>): void {
 
   // DELETE — exit impersonation, restore original session
   app.delete('/api/identity/v1/dev/impersonate', (c) => {
+    if (!devToolkitEnabled(c.get('user'))) return c.json({ error: 'Forbidden' }, 403);
     const original = getCookie(c, DEV_ORIGINAL_COOKIE);
     if (original) {
       setCookie(c, SESSION_COOKIE, original, COOKIE_BASE);

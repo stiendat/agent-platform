@@ -2,7 +2,6 @@ import { MessagePrimitive, ThreadPrimitive, useAui, useThread } from '@assistant
 import {
   Badge,
   Button,
-  ChatMarkdown,
   ChatMessage,
   ChatTranscript,
   cn,
@@ -20,7 +19,9 @@ import {
   PanelLeftOpen,
   Save,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { usePanelUI } from '@/modules/agent/chat-experience/agent-provider';
+import { AriaAssistantMessage } from '@/modules/agent/chat-experience/agent-transcript';
 import { ToolUIRegistry } from '@/modules/agent/components/tool-renderers';
 import { useAgentContext } from '@/modules/agent/hooks/use-agent-context';
 import { DashboardGrid } from '@/modules/aria/custom-dashboards/components/DashboardGrid';
@@ -83,6 +84,10 @@ function DashboardEditorPage() {
   });
 
   const aui = useAui();
+  const promptRef = useRef<HTMLTextAreaElement>(null);
+  // Right-side agent panel state — the editor's Agent Studio chat and the global
+  // panel share one thread, so we keep only one visible at a time (T2).
+  const { panelOpen, setPanelOpen } = usePanelUI();
   // Drives live widget sync: the agent writes widgets server-side as it works,
   // so we mirror the DB while the run is active and one final time after it ends.
   const isRunning = useThread((s) => s.isRunning);
@@ -104,6 +109,24 @@ function DashboardEditorPage() {
       setLoading(false);
     });
   }, [dashboardId]);
+
+  // Only one chat on screen: the inline Agent Studio yields to the global agent
+  // panel (they drive the same thread, so two views would duplicate it). Derived,
+  // not stored — opening the panel hides the studio without a render-cascade.
+  const studioOpen = chatOpen && !panelOpen;
+
+  // Auto-grow the composer up to 3 lines, then scroll vertically. Mirrors the
+  // shared ChatComposer's scrollHeight pattern; snaps back to one row on clear.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: textarea must re-measure when promptText changes
+  useLayoutEffect(() => {
+    const el = promptRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const lineHeight = Number.parseFloat(getComputedStyle(el).lineHeight) || 20;
+    const max = lineHeight * 3;
+    el.style.height = `${Math.min(el.scrollHeight, max)}px`;
+    el.style.overflowY = el.scrollHeight > max ? 'auto' : 'hidden';
+  }, [promptText]);
 
   // Merge the server's widget set into local state without clobbering the
   // unsaved period selection (which only persists on Save).
@@ -142,10 +165,14 @@ function DashboardEditorPage() {
     });
   }, []);
 
-  const handlePopulatePrompt = useCallback((prompt: string) => {
-    setPromptText(prompt);
-    setChatOpen(true);
-  }, []);
+  const handlePopulatePrompt = useCallback(
+    (prompt: string) => {
+      setPromptText(prompt);
+      setPanelOpen(false); // reveal the inline studio if the panel was covering it
+      setChatOpen(true);
+    },
+    [setPanelOpen],
+  );
 
   // Per-widget AI edit: snapshot the canvas, then send a scoped instruction that
   // names the widget id so ARIA rewrites it in place (performance_updateDashboardWidget).
@@ -255,39 +282,8 @@ function DashboardEditorPage() {
     );
   }
 
-  function AssistantMessage() {
-    return (
-      <ChatMessage variant="agent" author="ARIA">
-        <MessagePrimitive.Parts
-          components={{
-            Text: ({ text, status }: { text: string; status: { type: string } }) =>
-              text.length > 0 ? (
-                <div className="relative">
-                  <ChatMarkdown text={text} />
-                  {status.type === 'running' && (
-                    <span
-                      aria-hidden
-                      className="ml-0.5 inline-block h-3.5 w-1.5 translate-y-[2px] animate-pulse bg-ink"
-                    />
-                  )}
-                </div>
-              ) : null,
-            Reasoning: () => null,
-          }}
-        />
-        <MessagePrimitive.If hasContent={false} last>
-          <div className="flex items-center gap-2 text-caption text-ink-subtle py-2">
-            <span aria-hidden className="inline-flex items-center gap-0.5">
-              <span className="size-1.5 animate-bounce rounded-full bg-primary/70 [animation-delay:-0.32s]" />
-              <span className="size-1.5 animate-bounce rounded-full bg-primary/70 [animation-delay:-0.16s]" />
-              <span className="size-1.5 animate-bounce rounded-full bg-primary/70" />
-            </span>
-            <span className="italic">Thinking...</span>
-          </div>
-        </MessagePrimitive.If>
-      </ChatMessage>
-    );
-  }
+  // The inline chat uses the same rich renderer as the main agent panel:
+  // reasoning steps, tool calls, and chain-of-thought — full parity (T3).
 
   if (loading) {
     return (
@@ -418,7 +414,7 @@ function DashboardEditorPage() {
         <div
           className={cn(
             'flex flex-col border-r border-hairline bg-surface-1 transition-all duration-300 ease-out-expo',
-            chatOpen ? 'w-[420px] min-w-[320px]' : 'w-0 min-w-0 overflow-hidden',
+            studioOpen ? 'w-[420px] min-w-[320px]' : 'w-0 min-w-0 overflow-hidden',
           )}
         >
           <div className="flex items-center justify-between border-b border-hairline px-4 py-3 shrink-0">
@@ -453,16 +449,19 @@ function DashboardEditorPage() {
                   <PromptSuggestions onPick={handlePopulatePrompt} />
                 </div>
               </ThreadPrimitive.Empty>
-              <ThreadPrimitive.Messages components={{ UserMessage, AssistantMessage }} />
+              <ThreadPrimitive.Messages
+                components={{ UserMessage, AssistantMessage: AriaAssistantMessage }}
+              />
             </ChatTranscript>
             <ToolUIRegistry />
           </div>
 
           <div className="border-t border-hairline p-4 shrink-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-end gap-2">
               <div className="flex-1 rounded-lg border border-hairline bg-surface-2 px-3 py-2">
-                <input
-                  type="text"
+                <textarea
+                  ref={promptRef}
+                  rows={1}
                   value={promptText}
                   onChange={(e) => setPromptText(e.target.value)}
                   onKeyDown={(e) => {
@@ -474,7 +473,7 @@ function DashboardEditorPage() {
                   placeholder={
                     aiRunning ? 'ARIA is working...' : 'Describe what you want to see...'
                   }
-                  className="w-full bg-transparent text-body-sm text-ink outline-none placeholder:text-ink-subtle"
+                  className="block w-full resize-none bg-transparent text-body-sm leading-[1.45] text-ink outline-none placeholder:text-ink-subtle"
                   disabled={aiRunning}
                 />
               </div>
@@ -490,11 +489,15 @@ function DashboardEditorPage() {
         </div>
 
         <div className="flex-1 flex flex-col min-w-0">
-          {!chatOpen && (
+          {!studioOpen && (
             <div className="flex items-center gap-2 border-b border-hairline px-4 py-2 shrink-0">
               <button
                 type="button"
-                onClick={() => setChatOpen(true)}
+                onClick={() => {
+                  // Keep one chat on screen: opening the inline studio closes the panel.
+                  setPanelOpen(false);
+                  setChatOpen(true);
+                }}
                 className="flex items-center gap-1.5 rounded-md px-2 py-1 text-body-sm text-ink-muted hover:bg-surface-2 hover:text-ink transition-colors"
               >
                 <PanelLeftOpen className="size-4" />
