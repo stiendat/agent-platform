@@ -73,7 +73,7 @@ const PRESET_GROUPS: PromptGroup[] = [
         id: 'd-indicators',
         title: 'KPI indicator tiles',
         prompt:
-          'Add three indicator tiles — average KPI score, total open violations, and total overtime hours — each with its trend (up / down / neutral).',
+          'Add three indicator tiles — total employees in scope, high-risk headcount, and total at-risk employees.',
         capability: 'indicator',
       },
       {
@@ -118,22 +118,23 @@ const PRESET_GROUPS: PromptGroup[] = [
       },
       {
         id: 'd-bar',
-        title: 'KPI-by-account bar',
+        title: 'High-risk-by-account bar',
         prompt:
-          'Add a bar chart comparing the average KPI score across accounts ACC-A through ACC-E.',
+          'Add a bar chart comparing the number of high-risk employees across accounts ACC-A through ACC-E.',
         capability: 'report · bar',
       },
       {
         id: 'd-line',
         title: 'KPI trend line',
-        prompt: 'Add a line chart of the average KPI score trend over the last 6 months.',
+        prompt:
+          'Add a line chart of EMP-001’s KPI score across the two review periods (2026-03 and 2026-04).',
         capability: 'report · line',
       },
       {
         id: 'd-table',
         title: 'At-risk detail table',
         prompt:
-          'Add a table of at-risk employees with columns for KPI score, overtime hours, and open violations.',
+          'Add a table of at-risk employees with columns for risk level, risk summary, and recommended action.',
         capability: 'report · table',
       },
       {
@@ -197,7 +198,7 @@ const PRESET_GROUPS: PromptGroup[] = [
         id: 'c-report',
         title: 'Multi-chart report',
         prompt:
-          'Build a workforce risk report: a pie of risk levels, a bar of average KPI by account, and a table of at-risk employees.',
+          'Build a workforce risk report: a pie of risk levels, a bar of high-risk employees by account, and a table of at-risk employees with their risk level and recommended action.',
         capability: 'report',
       },
       {
@@ -238,15 +239,15 @@ const SCENARIOS: Scenario[] = [
     hint: 'Open a dashboard editor first — builds every widget kind + all four charts on it.',
     prompts: [
       'Add a section header titled "Workforce Health — Q2" and a short text block summarising overall workforce health.',
-      'Add three KPI indicator tiles — average KPI score, total open violations, and total overtime hours — each with its trend.',
+      'Add three KPI indicator tiles — total employees in scope, high-risk headcount, and total at-risk employees.',
       'Add a list widget titled "Active Risk Signals" with the current risk signals across the team.',
       'Add a card with the top 5 performers across all accounts, with scores and classifications.',
       'Add a card listing everyone at risk right now, with each person’s risk signals and recommended action.',
       'Add an account-level risk summary card rolling up high / medium / low risk across the workforce.',
       'Add a pie chart breaking the workforce down by risk level (high, medium, low).',
-      'Add a bar chart comparing the average KPI score across accounts ACC-A through ACC-E.',
-      'Add a line chart of the average KPI score trend over the last 6 months.',
-      'Add a table of at-risk employees with columns for KPI score, overtime hours, and open violations.',
+      'Add a bar chart comparing the number of high-risk employees across accounts ACC-A through ACC-E.',
+      'Add a line chart of EMP-001’s KPI score across the two review periods (2026-03 and 2026-04).',
+      'Add a table of at-risk employees with columns for risk level, risk summary, and recommended action.',
     ],
   },
   {
@@ -255,9 +256,9 @@ const SCENARIOS: Scenario[] = [
     hint: 'Open a dashboard editor first — adds a pie, bar, line and table in sequence.',
     prompts: [
       'Add a pie chart breaking the workforce down by risk level (high, medium, low).',
-      'Add a bar chart comparing the average KPI score across accounts ACC-A through ACC-E.',
-      'Add a line chart of the average KPI score trend over the last 6 months.',
-      'Add a table of at-risk employees with columns for KPI score, overtime hours, and open violations.',
+      'Add a bar chart comparing the number of high-risk employees across accounts ACC-A through ACC-E.',
+      'Add a line chart of EMP-001’s KPI score across the two review periods (2026-03 and 2026-04).',
+      'Add a table of at-risk employees with columns for risk level, risk summary, and recommended action.',
     ],
   },
 ];
