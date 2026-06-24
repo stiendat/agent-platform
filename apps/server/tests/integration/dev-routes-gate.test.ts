@@ -105,6 +105,23 @@ describe('dev routes — production gate', () => {
     }
   });
 
+  it('DEV_TOOLKIT_ALLOW_ALL opens every dev route to non-admins in production', async () => {
+    const original = process.env.DEV_TOOLKIT_ALLOW_ALL;
+    process.env.DEV_TOOLKIT_ALLOW_ALL = 'true';
+    try {
+      await withTest(async () => {
+        const app = buildApp(
+          buildSession({ tenant_id: crypto.randomUUID(), user_id: crypto.randomUUID(), roles: [] }),
+        );
+        const res = await app.request('/api/identity/v1/dev/flags');
+        expect(res.status).toBe(200);
+      });
+    } finally {
+      if (original === undefined) delete process.env.DEV_TOOLKIT_ALLOW_ALL;
+      else process.env.DEV_TOOLKIT_ALLOW_ALL = original;
+    }
+  });
+
   it('an admin retains access in production (gate does not 403)', async () => {
     await withTest(async () => {
       const app = buildApp(
@@ -118,6 +135,53 @@ describe('dev routes — production gate', () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as { flags: { force_expand_reasoning: boolean } };
       expect(body.flags.force_expand_reasoning).toBe(false);
+    });
+  });
+});
+
+describe('dev impersonate — production cookie naming', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  beforeAll(() => {
+    process.env.NODE_ENV = 'production';
+  });
+  afterAll(() => {
+    process.env.NODE_ENV = originalNodeEnv;
+  });
+
+  it('writes the session under better-auth’s __Secure- prefixed name with Secure set', async () => {
+    await withTest(async ({ pool }) => {
+      const tenantId = crypto.randomUUID();
+      const adminId = crypto.randomUUID();
+      const targetId = crypto.randomUUID();
+
+      await pool.query(`INSERT INTO core.tenants (id, name, slug) VALUES ($1, $2, $3)`, [
+        tenantId,
+        'Acme',
+        `acme-${tenantId}`,
+      ]);
+      await pool.query(
+        `INSERT INTO identity."user" (id, email, name, tenant_id) VALUES ($1, $2, $3, $4)`,
+        [targetId, `${targetId}@test`, 'Target User', tenantId],
+      );
+
+      const app = buildApp(
+        buildSession({ tenant_id: tenantId, user_id: adminId, roles: ['org.admin'] }),
+      );
+      const res = await app.request('/api/identity/v1/dev/impersonate', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ user_id: targetId }),
+      });
+      expect(res.status).toBe(200);
+
+      const cookies = res.headers.getSetCookie();
+      const sessionSet = cookies.find((c) => c.startsWith('__Secure-seta.session_token='));
+      // In production better-auth reads `__Secure-seta.session_token`; an
+      // unprefixed cookie is silently ignored, so impersonation never takes hold.
+      expect(sessionSet, `set-cookies: ${cookies.join(' | ')}`).toBeDefined();
+      expect(sessionSet).toMatch(/;\s*Secure/i);
+      // The unprefixed name must NOT be what we wrote in production.
+      expect(cookies.some((c) => c.startsWith('seta.session_token='))).toBe(false);
     });
   });
 });

@@ -2,17 +2,39 @@ import type { SessionEnv } from '@seta/core';
 import { getPool } from '@seta/shared-db';
 import type { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
-import { devToolkitEnabled } from './dev-access.ts';
+import type { CookieOptions } from 'hono/utils/cookie';
+import { devToolkitEnabled, isProd } from './dev-access.ts';
 
-const SESSION_COOKIE = 'seta.session_token';
 const DEV_ORIGINAL_COOKIE = 'seta-dev-original';
 
-const COOKIE_BASE = {
-  path: '/',
-  httpOnly: true,
-  sameSite: 'Lax',
-  secure: false,
-} as const;
+// better-auth runs with `useSecureCookies: NODE_ENV === 'production'`, which
+// prefixes every cookie with `__Secure-` and marks it Secure (and reads back
+// the prefixed name first). This route rewrites better-auth's own session
+// cookie, so it must mirror that naming and those attributes exactly — under a
+// plain `seta.session_token` name in production better-auth never reads what we
+// wrote, and impersonation silently does nothing. Computed per-request so it
+// tracks NODE_ENV/SESSION_COOKIE_SAMESITE rather than freezing at import time.
+function cookieConfig(): {
+  sessionCookie: string;
+  sessionDataCookies: string[];
+  base: CookieOptions;
+} {
+  const prod = isProd();
+  const prefix = prod ? '__Secure-' : '';
+  const sameSite = process.env.SESSION_COOKIE_SAMESITE === 'lax' ? 'Lax' : 'Strict';
+  return {
+    sessionCookie: `${prefix}seta.session_token`,
+    sessionDataCookies: [`${prefix}seta.session_data`, `${prefix}seta.session_data.0`],
+    base: {
+      path: '/',
+      httpOnly: true,
+      // Outside production better-auth uses Lax + non-secure (works on http
+      // localhost); in production it uses the configured SameSite + Secure.
+      sameSite: prod ? sameSite : 'Lax',
+      secure: prod,
+    },
+  };
+}
 
 // better-call (used internally by better-auth) signs cookies as `value.btoa(hmac_sha256(value, secret))`.
 // Hono's setCookie URL-encodes the result, which matches better-call's serializeSignedCookie output.
@@ -72,12 +94,14 @@ export function registerDevImpersonateRoutes(app: Hono<SessionEnv>): void {
     const secret = process.env.BETTER_AUTH_SECRET ?? '';
     const signedToken = await signCookieValue(token, secret);
 
-    const original = getCookie(c, SESSION_COOKIE);
-    if (original) setCookie(c, DEV_ORIGINAL_COOKIE, original, COOKIE_BASE);
-    setCookie(c, SESSION_COOKIE, signedToken, { ...COOKIE_BASE, expires: expiresAt });
-    // Bust the better-auth session cache so the new token is read from the DB
-    deleteCookie(c, 'seta.session_data', { path: '/' });
-    deleteCookie(c, 'seta.session_data.0', { path: '/' });
+    const { sessionCookie, sessionDataCookies, base } = cookieConfig();
+    const original = getCookie(c, sessionCookie);
+    if (original) setCookie(c, DEV_ORIGINAL_COOKIE, original, base);
+    setCookie(c, sessionCookie, signedToken, { ...base, expires: expiresAt });
+    // Bust the better-auth session cache so the new token is read from the DB.
+    // `secure` is required when clearing the `__Secure-`-prefixed prod names.
+    for (const name of sessionDataCookies)
+      deleteCookie(c, name, { path: '/', secure: base.secure });
 
     return c.json({
       ok: true,
@@ -90,11 +114,13 @@ export function registerDevImpersonateRoutes(app: Hono<SessionEnv>): void {
     if (!devToolkitEnabled(c.get('user'))) return c.json({ error: 'Forbidden' }, 403);
     const original = getCookie(c, DEV_ORIGINAL_COOKIE);
     if (original) {
-      setCookie(c, SESSION_COOKIE, original, COOKIE_BASE);
+      const { sessionCookie, sessionDataCookies, base } = cookieConfig();
+      setCookie(c, sessionCookie, original, base);
       deleteCookie(c, DEV_ORIGINAL_COOKIE, { path: '/' });
-      // Clear session cache so better-auth re-fetches from DB with the restored token
-      deleteCookie(c, 'seta.session_data', { path: '/' });
-      deleteCookie(c, 'seta.session_data.0', { path: '/' });
+      // Clear session cache so better-auth re-fetches from DB with the restored
+      // token. `secure` is required to clear the `__Secure-`-prefixed prod names.
+      for (const name of sessionDataCookies)
+        deleteCookie(c, name, { path: '/', secure: base.secure });
     }
     return c.json({ ok: true });
   });

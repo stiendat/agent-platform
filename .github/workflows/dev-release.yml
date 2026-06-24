@@ -414,6 +414,9 @@ jobs:
           CRYPTO_LOCAL_MASTER_KEY=${CRYPTO_LOCAL_MASTER_KEY}
           CORS_ORIGINS=https://${DEV_APP_DOMAIN}
           SESSION_COOKIE_SAMESITE=strict
+          # Demo/dev deployment: open the dev toolkit to every signed-in user
+          # (impersonation, role editor, flags). Not for real-data prod.
+          DEV_TOOLKIT_ALLOW_ALL=true
           EVENTS_RETENTION_DAYS=30
           KNOWLEDGE_AV_REQUIRED=false
           MAILER_DEFAULT_TRANSPORT=dev-stub

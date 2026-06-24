@@ -195,6 +195,9 @@ jobs:
             PUBLIC_URL=https://$APP_DOMAIN
             BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET
             SESSION_COOKIE_SAMESITE=strict
+            # Demo deployment: open the dev toolkit to every signed-in user
+            # (impersonation, role editor, flags). Not for real-data prod.
+            DEV_TOOLKIT_ALLOW_ALL=true
             CORS_ORIGINS=https://$APP_DOMAIN
             OPENAI_API_KEY=$OPENAI_API_KEY
             # Embeddings stay on OpenAI — pgvector columns are sized to its dims.
